@@ -11,8 +11,8 @@ import io
 USERS = {
     "admin": {"password": "admin123", "role": "admin"},
     "sales": {"password": "sales123", "role": "sales"},
-    "client": {"password": "client123", "role": "client"},
     "dealer": {"password": "dealer123", "role": "dealer"},
+    "client": {"password": "client123", "role": "client"},
 }
 
 if "logged_in" not in st.session_state:
@@ -20,6 +20,7 @@ if "logged_in" not in st.session_state:
 
 if not st.session_state.logged_in:
     st.title("Broker One Finance – LBOP Platform Login")
+
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
 
@@ -29,27 +30,31 @@ if not st.session_state.logged_in:
             st.session_state.logged_in = True
             st.session_state.user = username
             st.session_state.role = user["role"]
-            st.experimental_rerun()
+            st.rerun()
         else:
-            st.error("Invalid login")
+            st.error("Invalid username or password")
 
     st.stop()
 
 # =========================
-# HEADER
+# ROLE LABELS
 # =========================
-ROLE_NAME = {
+ROLE_LABELS = {
     "admin": "Internal Admin Calculator",
     "sales": "Internal Sales Calculator",
     "dealer": "Dealer Calculator",
     "client": "Client Calculator",
 }
 
-st.title("Broker One Finance – Lease Buyout Program (LBOP)")
-st.caption(f"{ROLE_NAME[st.session_state.role]}")
+# =========================
+# HEADER
+# =========================
+st.title("Broker One Finance")
+st.subheader("Lease Buyout Program (LBOP)")
+st.caption(ROLE_LABELS[st.session_state.role])
 
 # =========================
-# DEAL INFO (DEALER INPUT)
+# DEAL & VEHICLE INFO
 # =========================
 st.subheader("Deal & Vehicle Information")
 
@@ -86,28 +91,38 @@ st.info(f"Sales Tax (7% of loan): ${sales_tax:,.2f}")
 # ADDITIONAL FEES (INTERNAL)
 # =========================
 additional_fees = []
+
 if st.session_state.role in ["admin", "sales"]:
-    st.subheader("Additional Fees (Internal Only)")
-    fee_count = st.number_input("Number of additional fees", 0, 5, 0)
+    st.subheader("Additional Internal Fees")
+
+    fee_count = st.number_input(
+        "Number of additional fees",
+        min_value=0,
+        max_value=5,
+        step=1
+    )
 
     for i in range(fee_count):
+        st.markdown(f"**Additional Fee #{i + 1}**")
+
         fee_type = st.selectbox(
-            f"Fee #{i+1} Type",
+            "Fee Type",
             ["Flat", "% of Loan", "% of Buy Now"],
-            key=f"type_{i}"
+            key=f"fee_type_{i}"
         )
-        value = st.number_input(
-            f"Fee #{i+1} Value",
+
+        fee_value = st.number_input(
+            "Fee Value",
             min_value=0.0,
-            key=f"value_{i}"
+            key=f"fee_value_{i}"
         )
 
         if fee_type == "Flat":
-            additional_fees.append(value)
+            additional_fees.append(fee_value)
         elif fee_type == "% of Loan":
-            additional_fees.append(loan * (value / 100))
+            additional_fees.append(loan * (fee_value / 100))
         else:
-            additional_fees.append(buy_now * (value / 100))
+            additional_fees.append(buy_now * (fee_value / 100))
 
 # =========================
 # CALCULATIONS
@@ -124,6 +139,7 @@ total_fees = (
 
 equity = loan - (buy_now + total_fees)
 
+# Sliding payout scale
 if buy_now <= 3000:
     payout_pct = 0.60
 elif buy_now >= 19000:
@@ -141,13 +157,13 @@ st.subheader("Equity Summary")
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total Equity", f"${equity:,.2f}")
-col2.metric("Client %", f"{payout_pct*100:.2f}%")
+col2.metric("Client %", f"{payout_pct * 100:.2f}%")
 col3.metric("Client Payout", f"${client_payout:,.2f}")
 
 if st.session_state.role == "admin":
     col4.metric("Broker One Profit", f"${broker_profit:,.2f}")
     if broker_profit < 2000:
-        st.error("⚠ Profit below $2,000 floor")
+        st.error("⚠ Broker One profit below $2,000 minimum")
 
 # =========================
 # DEALER VIEW
@@ -167,10 +183,10 @@ def generate_pdf():
 
     text.textLine("Broker One Finance")
     text.textLine("Lease Buyout Program (LBOP)")
-    text.textLine(ROLE_NAME[st.session_state.role])
+    text.textLine(ROLE_LABELS[st.session_state.role])
     text.textLine("")
 
-    text.textLine(f"Client: {client_name}")
+    text.textLine(f"Client Name: {client_name}")
     text.textLine(f"Dealership: {dealership_name}")
     text.textLine(f"Lender: {lender_name}")
     text.textLine("")
@@ -178,8 +194,8 @@ def generate_pdf():
     text.textLine(f"VIN: {vin}")
     text.textLine("")
     text.textLine(f"Loan Amount: ${loan:,.2f}")
-    text.textLine(f"Buy Now: ${buy_now:,.2f}")
-    text.textLine(f"Equity: ${equity:,.2f}")
+    text.textLine(f"Buy Now Price: ${buy_now:,.2f}")
+    text.textLine(f"Total Equity: ${equity:,.2f}")
     text.textLine(f"Client Payout: ${client_payout:,.2f}")
 
     if st.session_state.role == "admin":
@@ -197,10 +213,11 @@ def generate_pdf():
     return buffer
 
 st.subheader("Export")
-pdf = generate_pdf()
+pdf_file = generate_pdf()
+
 st.download_button(
     "Download PDF Summary",
-    pdf,
+    pdf_file,
     file_name="BrokerOne_LBOP_Deal_Summary.pdf",
     mime="application/pdf"
 )
