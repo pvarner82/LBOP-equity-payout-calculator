@@ -33,7 +33,7 @@ if not st.session_state.logged_in:
     st.stop()
 
 # =========================
-# GLOBAL LABELS
+# ROLE LABELS
 # =========================
 ROLE_LABEL = {
     "admin": "Internal Admin Calculator",
@@ -81,8 +81,12 @@ if st.session_state.role == "client":
     )
 
     total_fees = (
-        DEALER_FEE + AUCTION_FEE + REGISTRATION_FEE +
-        TRANSPORT_FEE + PARTNER_FEE + sales_tax
+        DEALER_FEE
+        + AUCTION_FEE
+        + REGISTRATION_FEE
+        + TRANSPORT_FEE
+        + PARTNER_FEE
+        + sales_tax
     )
 
     equity = loan - (buy_now + total_fees)
@@ -101,10 +105,10 @@ if st.session_state.role == "client":
 
     st.markdown(
         """
-        **How this is calculated:**  
-        • ≤ $3,000 buyout → 60%  
-        • ≥ $19,000 buyout → 42.5%  
-        • Between → sliding scale
+        **Sliding Scale Explanation**
+        • Buyout ≤ $3,000 → 60%  
+        • Buyout ≥ $19,000 → 42.5%  
+        • Between → linear sliding scale
         """
     )
 
@@ -126,9 +130,13 @@ if st.session_state.role == "dealer":
     vin = st.text_input("VIN (Optional)")
 
     st.subheader("Dealer Fees")
-    dealer_base_fees = (
-        DEALER_FEE + AUCTION_FEE + REGISTRATION_FEE +
-        TRANSPORT_FEE + PARTNER_FEE + sales_tax
+    base_fees = (
+        DEALER_FEE
+        + AUCTION_FEE
+        + REGISTRATION_FEE
+        + TRANSPORT_FEE
+        + PARTNER_FEE
+        + sales_tax
     )
 
     extra_fees = []
@@ -139,7 +147,7 @@ if st.session_state.role == "dealer":
         amt = st.number_input(f"Fee Amount #{i+1}", min_value=0.0)
         extra_fees.append(amt)
 
-    total_fees = dealer_base_fees + sum(extra_fees)
+    total_fees = base_fees + sum(extra_fees)
     remainder = loan - (buy_now + total_fees)
 
     st.subheader("Broker One Remittance")
@@ -172,8 +180,13 @@ if st.session_state.role in ["admin", "sales"]:
             extra_fees.append(buy_now * val / 100)
 
     total_fees = (
-        DEALER_FEE + AUCTION_FEE + REGISTRATION_FEE +
-        TRANSPORT_FEE + PARTNER_FEE + sales_tax + sum(extra_fees)
+        DEALER_FEE
+        + AUCTION_FEE
+        + REGISTRATION_FEE
+        + TRANSPORT_FEE
+        + PARTNER_FEE
+        + sales_tax
+        + sum(extra_fees)
     )
 
     equity = loan - (buy_now + total_fees)
@@ -197,7 +210,7 @@ if st.session_state.role in ["admin", "sales"]:
         st.error("⚠ Profit below $2,000 minimum")
 
 # =========================
-# PDF EXPORT (ALL ROLES)
+# PDF EXPORT (FIXED FOR CLIENT)
 # =========================
 def export_pdf():
     buffer = io.BytesIO()
@@ -209,8 +222,23 @@ def export_pdf():
     t.textLine(ROLE_LABEL[st.session_state.role])
     t.textLine("")
 
-    t.textLine(f"Loan Amount: ${loan:,.2f}")
-    t.textLine(f"Buy Now Price: ${buy_now:,.2f}")
+    if st.session_state.role == "client":
+        t.textLine(f"Client Name: {client_name}")
+        t.textLine("")
+        t.textLine(f"Loan Amount: ${loan:,.2f}")
+        t.textLine(f"Buy Now Price: ${buy_now:,.2f}")
+        t.textLine("")
+        t.textLine("Standard Program Fees:")
+        t.textLine(f"Dealer Fee: ${DEALER_FEE:,.2f}")
+        t.textLine(f"Auction Fee: ${AUCTION_FEE:,.2f}")
+        t.textLine(f"Registration Fee: ${REGISTRATION_FEE:,.2f}")
+        t.textLine(f"Transport Fee: ${TRANSPORT_FEE:,.2f}")
+        t.textLine(f"Partner / Floor Fee: ${PARTNER_FEE:,.2f}")
+        t.textLine(f"Sales Tax (7%): ${sales_tax:,.2f}")
+        t.textLine("")
+        t.textLine(f"Equity Participation: {pct*100:.2f}%")
+        t.textLine(f"Estimated Equity: ${equity:,.2f}")
+        t.textLine(f"Estimated Cash Payout: ${payout:,.2f}")
 
     c.drawText(t)
     c.showPage()
