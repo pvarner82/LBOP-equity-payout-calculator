@@ -46,7 +46,7 @@ st.subheader("Lease Buyout Program (LBOP)")
 st.caption(ROLE_LABEL[st.session_state.role])
 
 # =========================
-# FIXED FEES
+# FIXED STANDARD FEES
 # =========================
 DEALER_FEE = 2000.0
 AUCTION_FEE = 1000.0
@@ -75,16 +75,12 @@ if st.session_state.role == "client":
     client_name = st.text_input("Your Name")
 
     st.subheader("Standard Program Fees")
-    st.markdown(
-        f"""
-        Dealer Fee: ${DEALER_FEE:,.2f}  
-        Auction Fee: ${AUCTION_FEE:,.2f}  
-        Registration Fee: ${REGISTRATION_FEE:,.2f}  
-        Transport Fee: ${TRANSPORT_FEE:,.2f}  
-        Partner / Floor Fee: ${PARTNER_FEE:,.2f}  
-        Sales Tax (7%): ${sales_tax:,.2f}
-        """
-    )
+    st.write(f"Dealer Fee: ${DEALER_FEE:,.2f}")
+    st.write(f"Auction Fee: ${AUCTION_FEE:,.2f}")
+    st.write(f"Registration Fee: ${REGISTRATION_FEE:,.2f}")
+    st.write(f"Transport Fee: ${TRANSPORT_FEE:,.2f}")
+    st.write(f"Partner / Floor Fee: ${PARTNER_FEE:,.2f}")
+    st.write(f"Sales Tax (7%): ${sales_tax:,.2f}")
 
     total_fees = (
         DEALER_FEE + AUCTION_FEE + REGISTRATION_FEE +
@@ -100,23 +96,30 @@ if st.session_state.role == "client":
     st.metric("Estimated Cash Payout", f"${payout:,.2f}")
 
 # =========================
-# DEALER
+# DEALER (ITEMIZED FEES)
 # =========================
 if st.session_state.role == "dealer":
+    st.subheader("Deal Information")
     client_name = st.text_input("Client Name")
     dealership = st.text_input("Dealership Name")
-    lender = st.text_input("Lender")
-    vehicle = st.text_input("Vehicle (Year / Make / Model)")
+    lender = st.text_input("Lender / Credit Union")
+    year = st.text_input("Vehicle Year")
+    make = st.text_input("Vehicle Make")
+    model = st.text_input("Vehicle Model")
     vin = st.text_input("VIN (Optional)")
 
     st.subheader("Standard Fees (Fixed)")
-    st.write(
-        f"${DEALER_FEE+AUCTION_FEE+REGISTRATION_FEE+TRANSPORT_FEE+PARTNER_FEE+sales_tax:,.2f}"
-    )
+    st.write(f"Dealer Fee: ${DEALER_FEE:,.2f}")
+    st.write(f"Auction Fee: ${AUCTION_FEE:,.2f}")
+    st.write(f"Registration Fee: ${REGISTRATION_FEE:,.2f}")
+    st.write(f"Transport Fee: ${TRANSPORT_FEE:,.2f}")
+    st.write(f"Partner / Floor Fee: ${PARTNER_FEE:,.2f}")
+    st.write(f"Sales Tax (7%): ${sales_tax:,.2f}")
 
     st.subheader("Additional Dealer Fees")
     extra_labels, extra_vals = [], []
-    n = st.number_input("Number of additional fees", 0, 5, 0)
+    n = st.number_input("Number of additional dealer fees", 0, 5, 0)
+
     for i in range(n):
         extra_labels.append(st.text_input(f"Fee Name #{i+1}"))
         extra_vals.append(st.number_input(f"Fee Amount #{i+1}", 0.0))
@@ -128,24 +131,27 @@ if st.session_state.role == "dealer":
 
     remainder = loan - (buy_now + total_fees)
 
+    st.subheader("Broker One Remittance")
     st.metric("Remaining After Fees", f"${remainder:,.2f}")
-    st.metric("Referral Fee (60%)", f"${remainder*0.60:,.2f}")
-    st.metric("Marketing Fee (40%)", f"${remainder*0.40:,.2f}")
+    st.metric("Referral Fee (60%)", f"${remainder * 0.60:,.2f}")
+    st.metric("Marketing Fee (40%)", f"${remainder * 0.40:,.2f}")
 
 # =========================
 # INTERNAL (SALES / ADMIN)
 # =========================
 if st.session_state.role in ["sales", "admin"]:
     st.subheader("Internal Fees")
-    labels, vals = [], []
+
+    extra_labels, extra_vals = [], []
     n = st.number_input("Additional Internal Fees", 0, 5, 0)
+
     for i in range(n):
-        labels.append(st.text_input(f"Fee Label #{i+1}"))
-        vals.append(st.number_input(f"Fee Value #{i+1}", 0.0))
+        extra_labels.append(st.text_input(f"Fee Label #{i+1}"))
+        extra_vals.append(st.number_input(f"Fee Value #{i+1}", 0.0))
 
     total_fees = (
         DEALER_FEE + AUCTION_FEE + REGISTRATION_FEE +
-        TRANSPORT_FEE + PARTNER_FEE + sales_tax + sum(vals)
+        TRANSPORT_FEE + PARTNER_FEE + sales_tax + sum(extra_vals)
     )
 
     equity = loan - (buy_now + total_fees)
@@ -162,7 +168,7 @@ if st.session_state.role in ["sales", "admin"]:
             st.error("⚠ Profit below $2,000 floor")
 
 # =========================
-# PDF EXPORT (ROLE SAFE)
+# PDF EXPORT (ROLE-SAFE)
 # =========================
 def export_pdf():
     b = io.BytesIO()
@@ -176,8 +182,9 @@ def export_pdf():
 
     if st.session_state.role == "client":
         t.textLine(f"Client: {client_name}")
-        t.textLine(f"Loan: ${loan:,.2f}")
-        t.textLine(f"Buy Now: ${buy_now:,.2f}")
+        t.textLine(f"Loan Amount: ${loan:,.2f}")
+        t.textLine(f"Buy Now Price: ${buy_now:,.2f}")
+        t.textLine(f"Sales Tax: ${sales_tax:,.2f}")
         t.textLine(f"Equity %: {pct*100:.2f}%")
         t.textLine(f"Equity: ${equity:,.2f}")
         t.textLine(f"Payout: ${payout:,.2f}")
@@ -185,17 +192,31 @@ def export_pdf():
     if st.session_state.role == "dealer":
         t.textLine(f"Client: {client_name}")
         t.textLine(f"Dealership: {dealership}")
-        t.textLine(f"Vehicle: {vehicle}")
+        t.textLine(f"Lender: {lender}")
+        t.textLine(f"Vehicle: {year} {make} {model}")
         t.textLine(f"VIN: {vin}")
-        t.textLine(f"Remaining: ${remainder:,.2f}")
-        t.textLine(f"Referral (60%): ${remainder*0.60:,.2f}")
-        t.textLine(f"Marketing (40%): ${remainder*0.40:,.2f}")
+        t.textLine("")
+        t.textLine("Standard Fees:")
+        t.textLine(f"Dealer Fee: ${DEALER_FEE:,.2f}")
+        t.textLine(f"Auction Fee: ${AUCTION_FEE:,.2f}")
+        t.textLine(f"Registration Fee: ${REGISTRATION_FEE:,.2f}")
+        t.textLine(f"Transport Fee: ${TRANSPORT_FEE:,.2f}")
+        t.textLine(f"Partner / Floor Fee: ${PARTNER_FEE:,.2f}")
+        t.textLine(f"Sales Tax: ${sales_tax:,.2f}")
+        t.textLine("")
+        t.textLine("Additional Dealer Fees:")
+        for lbl, val in zip(extra_labels, extra_vals):
+            t.textLine(f"{lbl}: ${val:,.2f}")
+        t.textLine("")
+        t.textLine(f"Remaining After Fees: ${remainder:,.2f}")
+        t.textLine(f"Referral Fee (60%): ${remainder*0.60:,.2f}")
+        t.textLine(f"Marketing Fee (40%): ${remainder*0.40:,.2f}")
 
     if st.session_state.role in ["sales", "admin"]:
         t.textLine(f"Equity: ${equity:,.2f}")
         t.textLine(f"Client Payout: ${payout:,.2f}")
         if st.session_state.role == "admin":
-            t.textLine(f"Broker Profit: ${profit:,.2f}")
+            t.textLine(f"Broker One Profit: ${profit:,.2f}")
 
     c.drawText(t)
     c.showPage()
