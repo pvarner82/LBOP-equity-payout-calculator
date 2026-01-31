@@ -186,9 +186,9 @@ if st.session_state.role in ["admin", "sales"]:
             st.error("⚠ Profit below $2,000 floor")
 
 # =========================
-# PDF EXPORT – ITEMIZED INTERNAL SUMMARY
+# PDF EXPORT
 # =========================
-def export_pdf(title, rows):
+def export_pdf(title, rows, include_signature=True, disclaimer=None):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=LETTER)
     styles = getSampleStyleSheet()
@@ -207,10 +207,16 @@ def export_pdf(title, rows):
         ("BOTTOMPADDING", (0,0), (-1,-1), 8),
     ]))
     elements.append(table)
-    elements.append(Spacer(1, 40))
+    elements.append(Spacer(1, 24))
 
-    elements.append(Paragraph("Approved By: ____________________________", styles["Normal"]))
-    elements.append(Paragraph("CEO Signature", styles["Italic"]))
+    if disclaimer:
+        elements.append(Paragraph(disclaimer, styles["Italic"]))
+        elements.append(Spacer(1, 24))
+
+    if include_signature:
+        elements.append(Spacer(1, 30))
+        elements.append(Paragraph("Approved By: ____________________________", styles["Normal"]))
+        elements.append(Paragraph("CEO Signature", styles["Italic"]))
 
     doc.build(elements)
     buffer.seek(0)
@@ -218,54 +224,7 @@ def export_pdf(title, rows):
 
 pdf_rows = [["Item", "Amount / Detail"]]
 
-if st.session_state.role == "admin":
-    pdf_rows += [
-        ["Client Name", client_name],
-        ["Vehicle", vehicle],
-        ["VIN", vin],
-        ["Loan Amount", f"${loan:,.2f}"],
-        ["Buy Now Price", f"${buy_now:,.2f}"],
-        ["Equity Percentage", f"{pct*100:.2f}%"],
-    ]
-
-    for name, val in fees:
-        pdf_rows.append([name, f"${val:,.2f}"])
-
-    pdf_rows += [
-        ["Total Fees", f"${total_fees:,.2f}"],
-        ["Client Payout", f"${payout:,.2f}"],
-        ["Broker One Profit", f"${profit:,.2f}"],
-    ]
-
-elif st.session_state.role == "sales":
-    pdf_rows += [
-        ["Client Name", client_name],
-        ["Vehicle", vehicle],
-        ["VIN", vin],
-        ["Loan Amount", f"${loan:,.2f}"],
-        ["Buy Now Price", f"${buy_now:,.2f}"],
-        ["Equity Percentage", f"{pct*100:.2f}%"],
-    ]
-
-    for name, val in fees:
-        pdf_rows.append([name, f"${val:,.2f}"])
-
-    pdf_rows += [
-        ["Total Fees", f"${total_fees:,.2f}"],
-        ["Client Payout", f"${payout:,.2f}"],
-    ]
-
-elif st.session_state.role == "dealer":
-    pdf_rows += [
-        ["Client Name", client_name],
-        ["Vehicle", vehicle],
-        ["VIN", vin],
-        ["Remaining After Fees", f"${remainder:,.2f}"],
-        ["Referral Fee (60%)", f"${remainder*0.60:,.2f}"],
-        ["Marketing Fee (40%)", f"${remainder*0.40:,.2f}"],
-    ]
-
-elif st.session_state.role == "client":
+if st.session_state.role == "client":
     pdf_rows += [
         ["Client Name", client_name],
         ["Loan Amount", f"${loan:,.2f}"],
@@ -275,9 +234,57 @@ elif st.session_state.role == "client":
         ["Estimated Cash Payout", f"${payout:,.2f}"],
     ]
 
-st.download_button(
-    "Download PDF Summary",
-    export_pdf("Equity Participation Fee Summary", pdf_rows),
-    file_name="BrokerOne_Equity_Participation_Fee_Summary.pdf",
-    mime="application/pdf"
-)
+    st.download_button(
+        "Download PDF Estimate",
+        export_pdf(
+            "Equity Participation Fee Estimation",
+            pdf_rows,
+            include_signature=False,
+            disclaimer=(
+                "This document is an estimate only. Final equity participation, fees, "
+                "and payouts may vary based on specific deal structure, vehicle condition, "
+                "dealer costs, taxes, and other transactional factors. "
+                "This is not a final approval or commitment."
+            ),
+        ),
+        file_name="BrokerOne_Equity_Participation_Estimate.pdf",
+        mime="application/pdf"
+    )
+
+else:
+    if st.session_state.role in ["admin", "sales"]:
+        pdf_rows += [
+            ["Client Name", client_name],
+            ["Vehicle", vehicle],
+            ["VIN", vin],
+            ["Loan Amount", f"${loan:,.2f}"],
+            ["Buy Now Price", f"${buy_now:,.2f}"],
+            ["Equity Percentage", f"{pct*100:.2f}%"],
+        ]
+        for name, val in fees:
+            pdf_rows.append([name, f"${val:,.2f}"])
+        pdf_rows.append(["Total Fees", f"${total_fees:,.2f}"])
+        pdf_rows.append(["Client Payout", f"${payout:,.2f}"])
+        if st.session_state.role == "admin":
+            pdf_rows.append(["Broker One Profit", f"${profit:,.2f}"])
+
+    elif st.session_state.role == "dealer":
+        pdf_rows += [
+            ["Client Name", client_name],
+            ["Vehicle", vehicle],
+            ["VIN", vin],
+            ["Remaining After Fees", f"${remainder:,.2f}"],
+            ["Referral Fee (60%)", f"${remainder*0.60:,.2f}"],
+            ["Marketing Fee (40%)", f"${remainder*0.40:,.2f}"],
+        ]
+
+    st.download_button(
+        "Download PDF Summary",
+        export_pdf(
+            "Equity Participation Fee Summary",
+            pdf_rows,
+            include_signature=True
+        ),
+        file_name="BrokerOne_Equity_Participation_Fee_Summary.pdf",
+        mime="application/pdf"
+    )
