@@ -60,18 +60,18 @@ def sliding_pct(bn):
     return 0.60 - ((bn - 3000) / 16000) * 0.175
 
 # =========================
-# STANDARD FEES (DEFAULTS)
+# STANDARD FEES (EDITABLE INTERNAL)
 # =========================
-def fee_field(label, default):
+def fee(label, default):
     return st.number_input(label, value=default, step=50.0)
 
 if st.session_state.role in ["admin", "sales"]:
     st.subheader("Standard Fees (Editable)")
-    dealer_fee = fee_field("Dealer Fee", 2000.0)
-    auction_fee = fee_field("Auction Fee", 1000.0)
-    registration_fee = fee_field("Registration Fee", 250.0)
-    transport_fee = fee_field("Transport Fee", 500.0)
-    partner_fee = fee_field("Partner / Floor Fee", 350.0)
+    dealer_fee = fee("Dealer Fee", 2000.0)
+    auction_fee = fee("Auction Fee", 1000.0)
+    registration_fee = fee("Registration Fee", 250.0)
+    transport_fee = fee("Transport Fee", 500.0)
+    partner_fee = fee("Partner / Floor Fee", 350.0)
 else:
     dealer_fee = 2000.0
     auction_fee = 1000.0
@@ -100,8 +100,8 @@ if st.session_state.role == "client":
     payout = equity * pct
 
     st.subheader("Standard Program Fees")
-    for label, val in fees:
-        st.write(f"{label}: ${val:,.2f}")
+    for f in fees:
+        st.write(f"{f[0]}: ${f[1]:,.2f}")
 
     st.metric("Equity Percentage", f"{pct*100:.2f}%")
     st.metric("Estimated Equity", f"${equity:,.2f}")
@@ -111,13 +111,12 @@ if st.session_state.role == "client":
 # DEALER
 # =========================
 if st.session_state.role == "dealer":
-    st.subheader("Deal Information")
     client_name = st.text_input("Client Name")
     dealership = st.text_input("Dealership Name")
+    lender = st.text_input("Lender / Credit Union")
     vehicle = st.text_input("Vehicle (Year / Make / Model)")
     vin = st.text_input("VIN (Optional)")
 
-    st.subheader("Standard Fees")
     fees = [
         ("Dealer Fee", dealer_fee),
         ("Auction Fee", auction_fee),
@@ -126,6 +125,8 @@ if st.session_state.role == "dealer":
         ("Partner / Floor Fee", partner_fee),
         ("Sales Tax (7%)", sales_tax),
     ]
+
+    st.subheader("Standard Fees")
     for f in fees:
         st.write(f"{f[0]}: ${f[1]:,.2f}")
 
@@ -145,9 +146,14 @@ if st.session_state.role == "dealer":
     st.metric("Marketing Fee (40%)", f"${remainder*0.40:,.2f}")
 
 # =========================
-# INTERNAL
+# INTERNAL (ADMIN / SALES)
 # =========================
 if st.session_state.role in ["admin", "sales"]:
+    st.subheader("Client & Vehicle Information")
+    client_name = st.text_input("Client Name")
+    vehicle = st.text_input("Vehicle (Year / Make / Model)")
+    vin = st.text_input("VIN (Optional)")
+
     st.subheader("Additional Internal Fees")
     extras = []
     n = st.number_input("Number of additional internal fees", 0, 5, 0)
@@ -180,7 +186,7 @@ if st.session_state.role in ["admin", "sales"]:
             st.error("⚠ Profit below $2,000 floor")
 
 # =========================
-# FANCY PDF EXPORT
+# PDF EXPORT
 # =========================
 def export_pdf(title, rows):
     buffer = io.BytesIO()
@@ -198,7 +204,6 @@ def export_pdf(title, rows):
         ("GRID", (0,0), (-1,-1), 1, colors.black),
         ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
         ("FONT", (0,0), (-1,0), "Helvetica-Bold"),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 6),
     ]))
     elements.append(table)
     elements.append(Spacer(1, 40))
@@ -210,35 +215,54 @@ def export_pdf(title, rows):
     buffer.seek(0)
     return buffer
 
-pdf_rows = [["Item", "Amount"]]
+pdf_rows = [["Item", "Amount / Detail"]]
 
-if st.session_state.role == "client":
+if st.session_state.role == "admin":
     pdf_rows += [
+        ["Client Name", client_name],
+        ["Vehicle", vehicle],
+        ["VIN", vin],
         ["Loan Amount", f"${loan:,.2f}"],
         ["Buy Now Price", f"${buy_now:,.2f}"],
         ["Equity %", f"{pct*100:.2f}%"],
-        ["Equity", f"${equity:,.2f}"],
-        ["Cash Payout", f"${payout:,.2f}"],
+        ["Client Payout", f"${payout:,.2f}"],
+        ["Broker One Profit", f"${profit:,.2f}"],
+    ]
+
+elif st.session_state.role == "sales":
+    pdf_rows += [
+        ["Client Name", client_name],
+        ["Vehicle", vehicle],
+        ["VIN", vin],
+        ["Loan Amount", f"${loan:,.2f}"],
+        ["Buy Now Price", f"${buy_now:,.2f}"],
+        ["Equity %", f"{pct*100:.2f}%"],
+        ["Client Payout", f"${payout:,.2f}"],
     ]
 
 elif st.session_state.role == "dealer":
     pdf_rows += [
+        ["Client Name", client_name],
+        ["Vehicle", vehicle],
+        ["VIN", vin],
         ["Remaining After Fees", f"${remainder:,.2f}"],
         ["Referral Fee (60%)", f"${remainder*0.60:,.2f}"],
         ["Marketing Fee (40%)", f"${remainder*0.40:,.2f}"],
     ]
 
-elif st.session_state.role in ["admin", "sales"]:
+elif st.session_state.role == "client":
     pdf_rows += [
-        ["Equity", f"${equity:,.2f}"],
-        ["Client Payout", f"${payout:,.2f}"],
+        ["Client Name", client_name],
+        ["Loan Amount", f"${loan:,.2f}"],
+        ["Buy Now Price", f"${buy_now:,.2f}"],
+        ["Equity %", f"{pct*100:.2f}%"],
+        ["Estimated Equity", f"${equity:,.2f}"],
+        ["Estimated Cash Payout", f"${payout:,.2f}"],
     ]
-    if st.session_state.role == "admin":
-        pdf_rows.append(["Broker One Profit", f"${profit:,.2f}"])
 
 st.download_button(
     "Download PDF Summary",
-    export_pdf(ROLE_LABEL[st.session_state.role], pdf_rows),
-    file_name="BrokerOne_LBOP_Payout_Certificate.pdf",
+    export_pdf("Equity Participation Fee Summary", pdf_rows),
+    file_name="BrokerOne_Equity_Participation_Fee_Summary.pdf",
     mime="application/pdf"
 )
