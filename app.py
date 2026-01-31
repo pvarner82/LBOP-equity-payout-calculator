@@ -117,7 +117,7 @@ if st.session_state.role == "dealer":
     vehicle = st.text_input("Vehicle (Year / Make / Model)")
     vin = st.text_input("VIN (Optional)")
 
-    fees = [
+    base_fees = [
         ("Dealer Fee", dealer_fee),
         ("Auction Fee", auction_fee),
         ("Registration Fee", registration_fee),
@@ -127,7 +127,7 @@ if st.session_state.role == "dealer":
     ]
 
     st.subheader("Standard Fees")
-    for f in fees:
+    for f in base_fees:
         st.write(f"{f[0]}: ${f[1]:,.2f}")
 
     st.subheader("Additional Dealer Fees")
@@ -138,7 +138,8 @@ if st.session_state.role == "dealer":
         val = st.number_input(f"Fee Amount #{i+1}", 0.0)
         extras.append((name, val))
 
-    total_fees = sum(v for _, v in fees) + sum(v for _, v in extras)
+    all_fees = base_fees + extras
+    total_fees = sum(v for _, v in all_fees)
     remainder = loan - (buy_now + total_fees)
 
     st.metric("Remaining After Fees", f"${remainder:,.2f}")
@@ -188,7 +189,7 @@ if st.session_state.role in ["admin", "sales"]:
 # =========================
 # PDF EXPORT
 # =========================
-def export_pdf(title, rows, include_signature=True, disclaimer=None):
+def export_pdf(title, rows, include_signature=True, signature_label=None, disclaimer=None):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=LETTER)
     styles = getSampleStyleSheet()
@@ -213,18 +214,47 @@ def export_pdf(title, rows, include_signature=True, disclaimer=None):
         elements.append(Paragraph(disclaimer, styles["Italic"]))
         elements.append(Spacer(1, 24))
 
-    if include_signature:
+    if include_signature and signature_label:
         elements.append(Spacer(1, 30))
-        elements.append(Paragraph("Approved By: ____________________________", styles["Normal"]))
-        elements.append(Paragraph("CEO Signature", styles["Italic"]))
+        elements.append(Paragraph(f"{signature_label}: ____________________________", styles["Normal"]))
 
     doc.build(elements)
     buffer.seek(0)
     return buffer
 
+# =========================
+# PDF ROWS BY ROLE
+# =========================
 pdf_rows = [["Item", "Amount / Detail"]]
 
-if st.session_state.role == "client":
+if st.session_state.role == "dealer":
+    pdf_rows += [
+        ["Client Name", client_name],
+        ["Vehicle", vehicle],
+        ["VIN", vin],
+    ]
+    for name, val in all_fees:
+        pdf_rows.append([name, f"${val:,.2f}"])
+    pdf_rows += [
+        ["Total Fees", f"${total_fees:,.2f}"],
+        ["Remaining After Fees", f"${remainder:,.2f}"],
+        ["Referral Fee (60%)", f"${remainder*0.60:,.2f}"],
+        ["Marketing Fee (40%)", f"${remainder*0.40:,.2f}"],
+    ]
+
+    st.download_button(
+        "Download Dealer PDF Summary",
+        export_pdf(
+            "Dealer Fee & Remittance Summary",
+            pdf_rows,
+            include_signature=True,
+            signature_label=f"{dealership} Authorized Representative / Dealer Principal"
+        ),
+        file_name="Dealer_Fee_Remittance_Summary.pdf",
+        mime="application/pdf"
+    )
+
+elif st.session_state.role == "client":
     pdf_rows += [
         ["Client Name", client_name],
         ["Loan Amount", f"${loan:,.2f}"],
@@ -268,22 +298,13 @@ else:
         if st.session_state.role == "admin":
             pdf_rows.append(["Broker One Profit", f"${profit:,.2f}"])
 
-    elif st.session_state.role == "dealer":
-        pdf_rows += [
-            ["Client Name", client_name],
-            ["Vehicle", vehicle],
-            ["VIN", vin],
-            ["Remaining After Fees", f"${remainder:,.2f}"],
-            ["Referral Fee (60%)", f"${remainder*0.60:,.2f}"],
-            ["Marketing Fee (40%)", f"${remainder*0.40:,.2f}"],
-        ]
-
     st.download_button(
         "Download PDF Summary",
         export_pdf(
             "Equity Participation Fee Summary",
             pdf_rows,
-            include_signature=True
+            include_signature=True,
+            signature_label="Broker One Finance – CEO Approval"
         ),
         file_name="BrokerOne_Equity_Participation_Fee_Summary.pdf",
         mime="application/pdf"
