@@ -186,7 +186,7 @@ if st.session_state.role in ["admin", "sales"]:
             st.error("⚠ Profit below $2,000 floor")
 
 # =========================
-# PDF EXPORT
+# PDF EXPORT – ITEMIZED INTERNAL SUMMARY
 # =========================
 def export_pdf(title, rows):
     buffer = io.BytesIO()
@@ -199,11 +199,12 @@ def export_pdf(title, rows):
     elements.append(Paragraph(title, styles["Heading2"]))
     elements.append(Spacer(1, 12))
 
-    table = Table(rows, hAlign="LEFT")
+    table = Table(rows, hAlign="LEFT", colWidths=[260, 260])
     table.setStyle(TableStyle([
         ("GRID", (0,0), (-1,-1), 1, colors.black),
         ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
         ("FONT", (0,0), (-1,0), "Helvetica-Bold"),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 8),
     ]))
     elements.append(table)
     elements.append(Spacer(1, 40))
@@ -224,7 +225,14 @@ if st.session_state.role == "admin":
         ["VIN", vin],
         ["Loan Amount", f"${loan:,.2f}"],
         ["Buy Now Price", f"${buy_now:,.2f}"],
-        ["Equity %", f"{pct*100:.2f}%"],
+        ["Equity Percentage", f"{pct*100:.2f}%"],
+    ]
+
+    for name, val in fees:
+        pdf_rows.append([name, f"${val:,.2f}"])
+
+    pdf_rows += [
+        ["Total Fees", f"${total_fees:,.2f}"],
         ["Client Payout", f"${payout:,.2f}"],
         ["Broker One Profit", f"${profit:,.2f}"],
     ]
@@ -236,7 +244,14 @@ elif st.session_state.role == "sales":
         ["VIN", vin],
         ["Loan Amount", f"${loan:,.2f}"],
         ["Buy Now Price", f"${buy_now:,.2f}"],
-        ["Equity %", f"{pct*100:.2f}%"],
+        ["Equity Percentage", f"{pct*100:.2f}%"],
+    ]
+
+    for name, val in fees:
+        pdf_rows.append([name, f"${val:,.2f}"])
+
+    pdf_rows += [
+        ["Total Fees", f"${total_fees:,.2f}"],
         ["Client Payout", f"${payout:,.2f}"],
     ]
 
@@ -255,7 +270,7 @@ elif st.session_state.role == "client":
         ["Client Name", client_name],
         ["Loan Amount", f"${loan:,.2f}"],
         ["Buy Now Price", f"${buy_now:,.2f}"],
-        ["Equity %", f"{pct*100:.2f}%"],
+        ["Equity Percentage", f"{pct*100:.2f}%"],
         ["Estimated Equity", f"${equity:,.2f}"],
         ["Estimated Cash Payout", f"${payout:,.2f}"],
     ]
