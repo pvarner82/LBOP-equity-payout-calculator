@@ -36,7 +36,7 @@ role = st.session_state.role
 st.caption(f"Logged in as: {role.upper()}")
 
 # =====================================================
-# SLIDING SCALE (SMOOTH, FINAL)
+# SLIDING SCALE (SMOOTH)
 # =====================================================
 def calculate_equity_percentage(buy_now):
     MIN_BUY = 3000
@@ -54,7 +54,7 @@ def calculate_equity_percentage(buy_now):
     return round(pct, 4)
 
 # =====================================================
-# INPUTS (COMMON)
+# INPUTS
 # =====================================================
 st.title("LBOP Equity Participation Calculator")
 
@@ -75,9 +75,10 @@ if role in ["sales", "dealer"]:
     lender_name = st.text_input("Lender / Credit Union Name")
 
 # =====================================================
-# TAXES (GLOBAL, CORRECT)
+# TAXES (EXPLICIT & VISIBLE)
 # =====================================================
 STANDARD_TAX_PCT = 0.07
+standard_tax_amount = vehicle_value * STANDARD_TAX_PCT
 
 additional_tax_pct = 0.0
 if role in ["sales", "dealer", "admin"]:
@@ -87,32 +88,31 @@ if role in ["sales", "dealer", "admin"]:
         step=0.1
     ) / 100
 
-total_tax_pct = STANDARD_TAX_PCT + additional_tax_pct
-tax_amount = vehicle_value * total_tax_pct
+additional_tax_amount = vehicle_value * additional_tax_pct
 
 # =====================================================
-# STANDARD FEES (ORGANIZED)
+# STANDARD FEES (ORGANIZED & CONSISTENT)
 # =====================================================
 fees = {
     "Dealer Fee": 2000.0,
     "Auction Fee": 1050.0,
     "Registration Fee": 250.0,
-    f"Sales Tax ({round(total_tax_pct*100,2)}%)": tax_amount,
+    "Standard Sales Tax (7%)": standard_tax_amount,
+    "Additional Sales Tax": additional_tax_amount,
     "Transport Fee": 1000.0,
     "Storage Fee": 300.0,
 }
 
 # =====================================================
-# FEE CONTROLS (ADMIN + SALES + DEALER)
+# FEE CONTROLS
 # =====================================================
 additional_fees = {}
 
 if role in ["admin", "sales", "dealer"]:
     st.subheader("Standard Fees")
-    for k in list(fees.keys()):
-        if not k.startswith("Sales Tax"):
+    for k in fees:
+        if k not in ["Standard Sales Tax (7%)", "Additional Sales Tax"]:
             fees[k] = st.number_input(k, value=float(fees[k]))
-    fees[f"Sales Tax ({round(total_tax_pct*100,2)}%)"] = vehicle_value * total_tax_pct
 
     st.subheader("Additional Fees")
     count = st.number_input("Number of additional fees", 0, 10, 0)
@@ -125,7 +125,8 @@ if role in ["admin", "sales", "dealer"]:
 if role == "client":
     st.subheader("Standard Program Fees (Fixed)")
     for k, v in fees.items():
-        st.text(f"{k}: ${v:,.2f}")
+        if v > 0:
+            st.text(f"{k}: ${v:,.2f}")
 
 # =====================================================
 # CALCULATIONS
@@ -186,9 +187,10 @@ def generate_pdf(title, footer=None, show_broker=False, dealer_split=False, sign
     c.setFont("Helvetica", 10)
 
     for k, v in fees.items():
-        c.drawString(inch, y, k)
-        c.drawRightString(w-inch, y, f"${v:,.2f}")
-        y -= 14
+        if v > 0:
+            c.drawString(inch, y, k)
+            c.drawRightString(w-inch, y, f"${v:,.2f}")
+            y -= 14
 
     for k, v in additional_fees.items():
         c.drawString(inch, y, k)
@@ -252,9 +254,7 @@ if role == "client":
 elif role == "sales":
     st.download_button(
         "Download Sales PDF",
-        generate_pdf(
-            "Client Participation Summary"
-        ),
+        generate_pdf("Client Participation Summary"),
         "sales_summary.pdf"
     )
 
