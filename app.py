@@ -36,7 +36,7 @@ role = st.session_state.role
 st.caption(f"Logged in as: {role.upper()}")
 
 # =====================================================
-# SLIDING SCALE (SMOOTH)
+# SLIDING SCALE (SMOOTH, FINAL)
 # =====================================================
 def calculate_equity_percentage(buy_now):
     MIN_BUY = 3000
@@ -54,23 +54,7 @@ def calculate_equity_percentage(buy_now):
     return round(pct, 4)
 
 # =====================================================
-# FEES
-# =====================================================
-def base_fees(retail_value, additional_tax_pct):
-    standard_tax_pct = 0.07
-    total_tax_pct = standard_tax_pct + additional_tax_pct
-
-    return {
-        "Dealer Fee": 2000.0,
-        "Auction Fee": 1050.0,
-        "Registration Fee": 250.0,
-        "Sales Tax ({}%)".format(round(total_tax_pct * 100, 2)): retail_value * total_tax_pct,
-        "Transport Fee": 1000.0,
-        "Storage Fee": 300.0,
-    }
-
-# =====================================================
-# INPUTS
+# INPUTS (COMMON)
 # =====================================================
 st.title("LBOP Equity Participation Calculator")
 
@@ -90,6 +74,11 @@ lender_name = ""
 if role in ["sales", "dealer"]:
     lender_name = st.text_input("Lender / Credit Union Name")
 
+# =====================================================
+# TAXES (GLOBAL, CORRECT)
+# =====================================================
+STANDARD_TAX_PCT = 0.07
+
 additional_tax_pct = 0.0
 if role in ["sales", "dealer", "admin"]:
     additional_tax_pct = st.number_input(
@@ -98,14 +87,33 @@ if role in ["sales", "dealer", "admin"]:
         step=0.1
     ) / 100
 
-fees = base_fees(vehicle_value, additional_tax_pct)
+total_tax_pct = STANDARD_TAX_PCT + additional_tax_pct
+tax_amount = vehicle_value * total_tax_pct
 
 # =====================================================
-# ADDITIONAL FEES
+# STANDARD FEES (ORGANIZED)
+# =====================================================
+fees = {
+    "Dealer Fee": 2000.0,
+    "Auction Fee": 1050.0,
+    "Registration Fee": 250.0,
+    f"Sales Tax ({round(total_tax_pct*100,2)}%)": tax_amount,
+    "Transport Fee": 1000.0,
+    "Storage Fee": 300.0,
+}
+
+# =====================================================
+# FEE CONTROLS (ADMIN + SALES + DEALER)
 # =====================================================
 additional_fees = {}
 
 if role in ["admin", "sales", "dealer"]:
+    st.subheader("Standard Fees")
+    for k in list(fees.keys()):
+        if not k.startswith("Sales Tax"):
+            fees[k] = st.number_input(k, value=float(fees[k]))
+    fees[f"Sales Tax ({round(total_tax_pct*100,2)}%)"] = vehicle_value * total_tax_pct
+
     st.subheader("Additional Fees")
     count = st.number_input("Number of additional fees", 0, 10, 0)
     for i in range(count):
