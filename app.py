@@ -75,7 +75,7 @@ if role in ["sales", "dealer"]:
     lender_name = st.text_input("Lender / Credit Union Name")
 
 # =====================================================
-# TAXES (EXPLICIT & VISIBLE)
+# TAXES (EXPLICIT)
 # =====================================================
 STANDARD_TAX_PCT = 0.07
 standard_tax_amount = vehicle_value * STANDARD_TAX_PCT
@@ -91,7 +91,7 @@ if role in ["sales", "dealer", "admin"]:
 additional_tax_amount = vehicle_value * additional_tax_pct
 
 # =====================================================
-# STANDARD FEES (ORGANIZED & CONSISTENT)
+# STANDARD FEES (ALL OF THEM, NO MISSING)
 # =====================================================
 fees = {
     "Dealer Fee": 2000.0,
@@ -99,6 +99,7 @@ fees = {
     "Registration Fee": 250.0,
     "Standard Sales Tax (7%)": standard_tax_amount,
     "Additional Sales Tax": additional_tax_amount,
+    "Partner / Floor Plan Fee": 1100.0,
     "Transport Fee": 1000.0,
     "Storage Fee": 300.0,
 }
