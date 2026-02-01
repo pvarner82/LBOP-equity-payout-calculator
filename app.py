@@ -36,7 +36,7 @@ role = st.session_state.role
 st.caption(f"Logged in as: {role.upper()}")
 
 # =====================================================
-# SLIDING SCALE (SMOOTH, FINAL)
+# SLIDING SCALE (SMOOTH)
 # =====================================================
 def calculate_equity_percentage(buy_now):
     MIN_BUY = 3000
@@ -54,20 +54,23 @@ def calculate_equity_percentage(buy_now):
     return round(pct, 4)
 
 # =====================================================
-# STANDARD FEES (BASELINE)
+# FEES
 # =====================================================
-def default_fees(retail_value):
+def base_fees(retail_value, additional_tax_pct):
+    standard_tax_pct = 0.07
+    total_tax_pct = standard_tax_pct + additional_tax_pct
+
     return {
         "Dealer Fee": 2000.0,
         "Auction Fee": 1050.0,
         "Registration Fee": 250.0,
-        "Sales Tax (7%)": retail_value * 0.07,
+        "Sales Tax ({}%)".format(round(total_tax_pct * 100, 2)): retail_value * total_tax_pct,
         "Transport Fee": 1000.0,
         "Storage Fee": 300.0,
     }
 
 # =====================================================
-# INPUTS (COMMON)
+# INPUTS
 # =====================================================
 st.title("LBOP Equity Participation Calculator")
 
@@ -87,19 +90,20 @@ lender_name = ""
 if role in ["sales", "dealer"]:
     lender_name = st.text_input("Lender / Credit Union Name")
 
-fees = default_fees(vehicle_value)
+additional_tax_pct = 0.0
+if role in ["sales", "dealer", "admin"]:
+    additional_tax_pct = st.number_input(
+        "Additional Tax (%)",
+        min_value=0.0,
+        step=0.1
+    ) / 100
+
+fees = base_fees(vehicle_value, additional_tax_pct)
 
 # =====================================================
-# FEE CONTROLS BY ROLE
+# ADDITIONAL FEES
 # =====================================================
 additional_fees = {}
-
-if role in ["admin", "sales", "dealer"]:
-    st.subheader("Standard Fees")
-    for k in list(fees.keys()):
-        if k != "Sales Tax (7%)":
-            fees[k] = st.number_input(k, value=float(fees[k]))
-    fees["Sales Tax (7%)"] = vehicle_value * 0.07
 
 if role in ["admin", "sales", "dealer"]:
     st.subheader("Additional Fees")
@@ -129,7 +133,7 @@ referral_fee = broker_remainder * 0.60
 marketing_fee = broker_remainder * 0.40
 
 # =====================================================
-# RESULTS DISPLAY
+# RESULTS
 # =====================================================
 st.subheader("Results")
 
