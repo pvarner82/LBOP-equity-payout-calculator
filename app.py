@@ -5,11 +5,12 @@ import io
 from datetime import date
 
 # =================================================
-# AUTH
+# AUTH SYSTEM
 # =================================================
 USERS = {
     "admin": {"password": "admin123", "role": "admin"},
     "sales": {"password": "sales123", "role": "sales"},
+    "dealer": {"password": "dealer123", "role": "dealer"},
     "client": {"password": "client123", "role": "client"},
 }
 
@@ -17,7 +18,7 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
-    st.title("Broker One Finance – LBOP Access")
+    st.title("Broker One Finance – LBOP Secure Access")
     u = st.text_input("Username")
     p = st.text_input("Password", type="password")
     if st.button("Login"):
@@ -35,7 +36,7 @@ role = st.session_state.role
 st.caption(f"Logged in as: {role.upper()}")
 
 # =================================================
-# STANDARD FEES (BASELINE)
+# STANDARD FEES (PROGRAM BASELINE)
 # =================================================
 STANDARD_FEES = {
     "Dealer Fee": 2000,
@@ -46,7 +47,7 @@ STANDARD_FEES = {
 }
 
 # =================================================
-# INPUTS
+# INPUTS (COMMON)
 # =================================================
 st.header("LBOP Equity Participation Calculator")
 
@@ -85,13 +86,26 @@ if role == "admin":
         if name:
             fees[name] = amt
 
+elif role == "dealer":
+    st.subheader("Dealer Fees (Itemized)")
+    for k in fees:
+        if k != "Sales Tax (7%)":
+            fees[k] = st.number_input(k, value=float(fees[k]))
+
+    extra_count = st.number_input("Additional Dealer Fees", 0, 5, 0)
+    for i in range(extra_count):
+        name = st.text_input(f"Dealer Fee Name {i+1}")
+        amt = st.number_input(f"Amount {i+1}", min_value=0.0)
+        if name:
+            fees[name] = amt
+
 elif role == "client":
-    st.subheader("Standard Program Fees")
+    st.subheader("Standard Program Fees (Fixed)")
     for k, v in fees.items():
         st.text(f"{k}: ${v:,.2f}")
 
 # =================================================
-# PROGRAM EQUITY (INTERNAL)
+# PROGRAM EQUITY (INTERNAL ONLY)
 # =================================================
 total_deductions = sum(fees.values()) + buy_now
 program_equity = max(retail_value - total_deductions, 0)
@@ -109,26 +123,26 @@ else:
 participation_pct = min(max(participation_pct, 0.425), 0.60)
 
 equity_payout = program_equity * participation_pct
+broker_margin = program_equity - equity_payout
 
 # =================================================
-# RESULTS
+# RESULTS DISPLAY
 # =================================================
 st.subheader("Equity Participation Results")
 
-st.metric(
-    "Equity Participation Percentage",
-    f"{participation_pct * 100:.1f}%"
-)
+st.metric("Equity Participation Percentage", f"{participation_pct * 100:.1f}%")
+st.metric("Equity Participation Payout", f"${equity_payout:,.2f}")
 
-st.metric(
-    "Equity Participation Payout",
-    f"${equity_payout:,.2f}"
-)
+if role in ["dealer", "sales"]:
+    st.metric("Dealer Remittance to Broker One", f"${broker_margin:,.2f}")
+
+if role == "admin":
+    st.metric("Broker One Internal Margin", f"${broker_margin:,.2f}")
 
 # =================================================
 # PDF GENERATION
 # =================================================
-def generate_pdf(title, disclaimer=False, show_profit=False, signature=None):
+def generate_pdf(title, footer_note=None, signature=None, show_margin=False):
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=LETTER)
     w, h = LETTER
@@ -139,13 +153,13 @@ def generate_pdf(title, disclaimer=False, show_profit=False, signature=None):
     c.setFont("Helvetica", 11)
     y = h - 100
     c.drawString(40, y, f"Client: {client_name}")
-    y -= 20
+    y -= 18
     c.drawString(40, y, f"Date: {date.today()}")
 
     y -= 30
     c.setFont("Helvetica-Bold", 12)
     c.drawString(40, y, "Fee Breakdown")
-    y -= 20
+    y -= 18
     c.setFont("Helvetica", 10)
 
     for k, v in fees.items():
@@ -154,29 +168,29 @@ def generate_pdf(title, disclaimer=False, show_profit=False, signature=None):
         y -= 14
 
     y -= 20
-    c.setFont("Helvetica-Bold", 12)
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(40, y, f"Buy Now Price: ${buy_now:,.2f}")
+    y -= 16
+    c.drawString(40, y, f"Retail Value Reference: ${retail_value:,.2f}")
+    y -= 16
+    c.drawString(40, y, f"Equity Participation %: {participation_pct * 100:.1f}%")
+    y -= 16
     c.drawString(40, y, f"Equity Participation Payout: ${equity_payout:,.2f}")
-    y -= 18
-    c.drawString(40, y, f"Participation Percentage: {participation_pct * 100:.1f}%")
 
-    if show_profit:
-        broker_profit = program_equity - equity_payout
+    if show_margin:
         y -= 20
-        c.drawString(40, y, f"Broker One Internal Margin: ${broker_profit:,.2f}")
+        c.drawString(40, y, f"Broker One Internal Margin: ${broker_margin:,.2f}")
 
-    if disclaimer:
+    if footer_note:
         y -= 40
         c.setFont("Helvetica-Oblique", 9)
-        c.drawString(
-            40,
-            y,
-            "This document is an estimate only. Final equity participation payouts may vary based on final acquisition costs, dealer fees, and transaction expenses."
-        )
+        c.drawString(40, y, footer_note)
 
     if signature:
         y -= 50
+        c.setFont("Helvetica", 10)
         c.drawString(40, y, "Approved By:")
-        y -= 18
+        y -= 16
         c.drawString(40, y, signature)
 
     c.showPage()
@@ -185,16 +199,22 @@ def generate_pdf(title, disclaimer=False, show_profit=False, signature=None):
     return buf
 
 # =================================================
-# PDF DOWNLOADS
+# PDF DOWNLOADS BY ROLE
 # =================================================
 st.divider()
 
 if role == "client":
     pdf = generate_pdf(
         "Equity Participation Payout Estimate",
-        disclaimer=True
+        footer_note="This document is an estimate only. Final payouts may vary based on deal structure and final costs."
     )
-    st.download_button("Download Estimate PDF", pdf, "client_estimate.pdf")
+    st.download_button("Download Client Estimate PDF", pdf, "client_estimate.pdf")
+
+elif role == "dealer":
+    pdf = generate_pdf(
+        "Dealer Service Payment Summary"
+    )
+    st.download_button("Download Dealer PDF", pdf, "dealer_summary.pdf")
 
 elif role == "sales":
     pdf = generate_pdf(
@@ -205,7 +225,7 @@ elif role == "sales":
 elif role == "admin":
     pdf = generate_pdf(
         "Equity Participation Fee Summary",
-        show_profit=True,
-        signature="Picasso Ali Varner – CEO, Broker One Finance"
+        signature="Picasso Ali Varner – CEO, Broker One Finance",
+        show_margin=True
     )
     st.download_button("Download Internal PDF", pdf, "internal_summary.pdf")
