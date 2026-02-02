@@ -202,7 +202,11 @@ if st.button("Download PDF"):
             "Equity Participation Estimate",
             {"Client": client_name, "Date": today},
             fees,
-            {"Equity %": f"{equity_pct}%", "Estimated Payout": f"${client_payout:,.2f}"},
+            {
+                "Total Equity Pool": f"${equity_pool:,.2f}",
+                "Equity %": f"{equity_pct}%",
+                "Estimated Client Payout": f"${client_payout:,.2f}",
+            },
             footer="This document is an estimate only. Final figures may vary."
         )
 
@@ -211,7 +215,11 @@ if st.button("Download PDF"):
             "Client Participation Summary",
             {"Client": client_name, "Vehicle": vehicle, "Lender": lender},
             fees,
-            {"Equity %": f"{equity_pct}%", "Client Payout": f"${client_payout:,.2f}"}
+            {
+                "Total Equity Pool": f"${equity_pool:,.2f}",
+                "Equity %": f"{equity_pct}%",
+                "Client Payout": f"${client_payout:,.2f}",
+            }
         )
 
     elif ROLE == "dealer":
@@ -232,6 +240,7 @@ if st.button("Download PDF"):
             {"Client": client_name, "Date": today},
             fees,
             {
+                "Total Equity Pool": f"${equity_pool:,.2f}",
                 "Client Payout": f"${client_payout:,.2f}",
                 "Broker One Retained": f"${dealer_remaining:,.2f}",
             },
