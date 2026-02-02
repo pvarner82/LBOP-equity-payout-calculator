@@ -144,14 +144,22 @@ referral_fee = dealer_remaining * 0.60
 marketing_fee = dealer_remaining * 0.40
 
 # =========================
-# RESULTS
+# RESULTS (ROLE-CORRECT)
 # =========================
-st.subheader("Equity Results")
-st.metric("Equity Participation %", f"{equity_pct}%")
-st.metric("Client Equity Payout", f"${client_payout:,.2f}")
+st.subheader("Results")
 
-if ROLE in ["dealer", "admin"]:
-    st.metric("Remaining Equity After Client Payout", f"${dealer_remaining:,.2f}")
+if ROLE in ["client", "sales"]:
+    st.metric("Equity Participation %", f"{equity_pct}%")
+    st.metric("Client Equity Payout", f"${client_payout:,.2f}")
+
+elif ROLE == "dealer":
+    st.metric("Referral Fee (60%)", f"${referral_fee:,.2f}")
+    st.metric("Marketing Fee (40%)", f"${marketing_fee:,.2f}")
+
+elif ROLE == "admin":
+    st.metric("Equity Participation %", f"{equity_pct}%")
+    st.metric("Client Equity Payout", f"${client_payout:,.2f}")
+    st.metric("Broker One Retained", f"${dealer_remaining:,.2f}")
 
 # =========================
 # PDF BUILDER
