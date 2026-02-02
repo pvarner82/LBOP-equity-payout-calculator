@@ -1,25 +1,14 @@
-# ============================================================
-# LBOP EQUITY PARTICIPATION PLATFORM – FULL APPLICATION
-# ============================================================
-
 import streamlit as st
 from reportlab.lib.pagesizes import LETTER
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import inch
-from datetime import datetime
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
 import io
+from datetime import date
 
-# ------------------------------------------------------------
-# APP CONFIG
-# ------------------------------------------------------------
-st.set_page_config(
-    page_title="LBOP Equity Participation Platform",
-    layout="centered"
-)
-
-# ------------------------------------------------------------
-# AUTH SYSTEM
-# ------------------------------------------------------------
+# ----------------------------
+# AUTH
+# ----------------------------
 USERS = {
     "client": {"password": "client123", "role": "client"},
     "sales": {"password": "sales123", "role": "sales"},
@@ -31,255 +20,197 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
-    st.title("Broker One Finance – LBOP Secure Access")
-
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-
+    st.title("Broker One Finance – LBOP Access")
+    u = st.text_input("Username")
+    p = st.text_input("Password", type="password")
     if st.button("Login"):
-        if username in USERS and USERS[username]["password"] == password:
+        if u in USERS and USERS[u]["password"] == p:
             st.session_state.logged_in = True
-            st.session_state.role = USERS[username]["role"]
+            st.session_state.role = USERS[u]["role"]
             st.experimental_rerun()
         else:
-            st.error("Invalid credentials")
-
+            st.error("Invalid login")
     st.stop()
 
-role = st.session_state.role
+ROLE = st.session_state.role
 
-# ------------------------------------------------------------
-# SLIDING SCALE (42.5% – 60%)
-# ------------------------------------------------------------
+# ----------------------------
+# SLIDING SCALE (CONTINUOUS)
+# Buy Now → Equity %
+# 3,000 → 42.5%
+# 19,000 → 60%
+# ----------------------------
 def equity_percentage(buy_now):
-    if buy_now <= 3000:
-        return 0.60
-    if buy_now >= 19000:
-        return 0.425
-    return 0.60 - ((buy_now - 3000) / (19000 - 3000)) * (0.60 - 0.425)
+    min_buy, max_buy = 3000, 19000
+    min_pct, max_pct = 42.5, 60.0
+    buy_now = max(min_buy, min(max_buy, buy_now))
+    return round(
+        min_pct + (buy_now - min_buy) * (max_pct - min_pct) / (max_buy - min_buy),
+        2
+    )
 
-# ------------------------------------------------------------
-# HEADER
-# ------------------------------------------------------------
-st.title("LBOP Equity Participation Calculator")
-st.caption(f"Role: {role.upper()}")
-
-# ------------------------------------------------------------
-# CLIENT / VEHICLE INFO
-# ------------------------------------------------------------
-client_name = st.text_input("Client Name")
-
-vehicle_desc = ""
-vin = ""
-lender = ""
-dealer_name = ""
-
-if role in ["sales", "dealer", "admin"]:
-    vehicle_desc = st.text_input("Vehicle (Year / Make / Model)")
-    vin = st.text_input("VIN (optional)")
-    lender = st.text_input("Lender / Credit Union")
-
-if role in ["dealer", "admin"]:
-    dealer_name = st.text_input("Dealership Name")
-
-# ------------------------------------------------------------
-# CORE VALUES
-# ------------------------------------------------------------
-retail_value = st.number_input(
-    "Retail Vehicle Value (Loan Amount Reference)",
-    min_value=0.0,
-    step=500.0
-)
-
-buy_now = st.number_input(
-    "Buy Now Price (Vehicle Acquisition Cost)",
-    min_value=0.0,
-    step=500.0
-)
-
-# ------------------------------------------------------------
+# ----------------------------
 # STANDARD FEES
-# ------------------------------------------------------------
-st.header("Standard Fees")
+# ----------------------------
+def standard_fees(buy_now):
+    return {
+        "Dealer Fee": 2000,
+        "Auction Fee": 1050,
+        "Registration Fee": 250,
+        "Transport Fee": 1000,
+        "Storage Fee": 300,
+        "Partner / Floor Plan Fee (10%)": buy_now * 0.10,
+    }
 
-dealer_fee = st.number_input("Dealer Fee", value=2000.0)
-auction_fee = st.number_input("Auction Fee", value=1050.0)
-registration_fee = st.number_input("Registration Fee", value=250.0)
+# ----------------------------
+# PDF BUILDER
+# ----------------------------
+def build_pdf(title, header_data, fee_data, equity_data, footer_note="", signature=None):
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=LETTER)
+    styles = getSampleStyleSheet()
+    story = []
 
-# 🔁 CHANGED: Partner / Floor Plan Fee = 10% of Buy Now
-partner_fee = buy_now * 0.10
-st.info(f"Partner / Floor Plan Fee (10% of Buy Now): ${partner_fee:,.2f}")
+    story.append(Paragraph(f"<b>{title}</b>", styles["Title"]))
+    story.append(Spacer(1, 12))
 
-transport_fee = st.number_input("Transport Fee", value=1000.0)
-storage_fee = st.number_input("Storage Fee", value=300.0)
+    table_data = [[k, v] for k, v in header_data.items()]
+    table = Table(table_data, colWidths=[250, 250])
+    table.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey)
+    ]))
+    story.append(table)
+    story.append(Spacer(1, 20))
 
-# ------------------------------------------------------------
-# TAXES
-# ------------------------------------------------------------
-st.subheader("Taxes")
+    fee_table = [["Fee", "Amount ($)"]] + [[k, f"${v:,.2f}"] for k, v in fee_data.items()]
+    fee_tbl = Table(fee_table, colWidths=[300, 200])
+    fee_tbl.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey)
+    ]))
+    story.append(fee_tbl)
+    story.append(Spacer(1, 20))
 
-sales_tax_rate = st.number_input(
-    "Sales Tax (%)",
-    value=7.0,
-    step=0.25
-)
+    eq_table = [["Metric", "Value"]] + [[k, v] for k, v in equity_data.items()]
+    eq_tbl = Table(eq_table, colWidths=[300, 200])
+    eq_tbl.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey)
+    ]))
+    story.append(eq_tbl)
 
-additional_tax_rate = st.number_input(
-    "Additional Tax (%)",
-    value=0.0,
-    step=0.25
-)
+    if footer_note:
+        story.append(Spacer(1, 20))
+        story.append(Paragraph(footer_note, styles["Italic"]))
 
-sales_tax = retail_value * (sales_tax_rate / 100)
-additional_tax = retail_value * (additional_tax_rate / 100)
+    if signature:
+        story.append(Spacer(1, 40))
+        story.append(Paragraph(signature, styles["Normal"]))
 
-# ------------------------------------------------------------
-# ADDITIONAL FEES
-# ------------------------------------------------------------
-st.header("Additional Fees")
+    doc.build(story)
+    buf.seek(0)
+    return buf
 
-additional_fees_total = 0.0
-additional_fee_count = st.number_input(
-    "Number of additional fees",
-    min_value=0,
-    max_value=10,
-    step=1
-)
+# ----------------------------
+# COMMON INPUTS
+# ----------------------------
+st.title("LBOP Equity Participation Calculator")
 
-additional_fees = []
+client_name = st.text_input("Client Name")
+vehicle = st.text_input("Vehicle (Year / Make / Model)")
+lender = st.text_input("Lender Name") if ROLE != "client" else None
 
-for i in range(int(additional_fee_count)):
-    label = st.text_input(f"Fee {i+1} Name")
-    amount = st.number_input(f"Fee {i+1} Amount", min_value=0.0)
-    additional_fees.append((label, amount))
-    additional_fees_total += amount
+retail_value = st.number_input("Retail Vehicle Value (Loan Reference)", min_value=0.0)
+buy_now = st.number_input("Buy Now Price (Vehicle Acquisition)", min_value=0.0)
 
-# ------------------------------------------------------------
-# CALCULATIONS
-# ------------------------------------------------------------
-total_fees = (
-    dealer_fee +
-    auction_fee +
-    registration_fee +
-    partner_fee +
-    transport_fee +
-    storage_fee +
-    sales_tax +
-    additional_tax +
-    additional_fees_total
-)
+fees = standard_fees(buy_now)
 
-gross_equity = retail_value - buy_now - total_fees
-equity_pct = equity_percentage(buy_now)
-equity_payout = max(gross_equity * equity_pct, 0)
+sales_tax = retail_value * 0.07
+fees["Sales Tax (7%)"] = sales_tax
 
-dealer_remittance = gross_equity - equity_payout
-referral_fee = dealer_remittance * 0.60
-marketing_fee = dealer_remittance * 0.40
+extra_tax_pct = st.number_input("Additional Tax %", min_value=0.0)
+fees["Additional Tax"] = retail_value * (extra_tax_pct / 100)
 
-# ------------------------------------------------------------
+additional_fees = {}
+if ROLE in ["admin", "dealer", "sales"]:
+    count = st.number_input("Number of Additional Fees", 0, 10, 0)
+    for i in range(count):
+        name = st.text_input(f"Fee Name {i+1}")
+        amt = st.number_input(f"Fee Amount {i+1}", min_value=0.0)
+        if name:
+            additional_fees[name] = amt
+
+fees.update(additional_fees)
+
+total_fees = sum(fees.values())
+gross_equity = retail_value - total_fees
+pct = equity_percentage(buy_now)
+client_payout = gross_equity * (pct / 100)
+
+# Dealer split
+dealer_remit = gross_equity - client_payout
+referral = dealer_remit * 0.60
+marketing = dealer_remit * 0.40
+
+# ----------------------------
 # RESULTS
-# ------------------------------------------------------------
-st.header("Equity Participation Results")
+# ----------------------------
+st.subheader("Equity Participation Results")
+st.metric("Equity %", f"{pct}%")
+st.metric("Client Payout", f"${client_payout:,.2f}")
 
-st.metric("Equity Participation Percentage", f"{equity_pct*100:.1f}%")
-st.metric("Equity Participation Payout", f"${equity_payout:,.2f}")
+if ROLE in ["dealer", "admin"]:
+    st.metric("Dealer Remittance to Broker One", f"${dealer_remit:,.2f}")
 
-if role in ["dealer", "admin"]:
-    st.metric("Dealer Remittance to Broker One", f"${dealer_remittance:,.2f}")
+# ----------------------------
+# PDF BUTTONS
+# ----------------------------
+today = date.today().strftime("%B %d, %Y")
 
-# ------------------------------------------------------------
-# PDF GENERATION HELPERS
-# ------------------------------------------------------------
-def generate_pdf(title, lines, footer):
-    buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=LETTER)
-    width, height = LETTER
+if st.button("Download PDF"):
+    if ROLE == "client":
+        pdf = build_pdf(
+            "Equity Participation Estimate",
+            {"Client": client_name, "Vehicle": vehicle},
+            fees,
+            {
+                "Equity %": f"{pct}%",
+                "Estimated Payout": f"${client_payout:,.2f}"
+            },
+            footer_note="This document is an estimate only. Final payouts may vary."
+        )
+    elif ROLE == "sales":
+        pdf = build_pdf(
+            "Client Participation Summary",
+            {"Client": client_name, "Vehicle": vehicle, "Lender": lender},
+            fees,
+            {
+                "Equity %": f"{pct}%",
+                "Client Payout": f"${client_payout:,.2f}"
+            }
+        )
+    elif ROLE == "dealer":
+        pdf = build_pdf(
+            "Dealer Service Payment Summary",
+            {"Client": client_name, "Vehicle": vehicle, "Lender": lender},
+            fees,
+            {
+                "Referral (60%)": f"${referral:,.2f}",
+                "Marketing (40%)": f"${marketing:,.2f}"
+            },
+            signature="Authorized Dealer Representative Signature"
+        )
+    else:
+        pdf = build_pdf(
+            "Internal Equity Participation Summary",
+            {"Client": client_name, "Vehicle": vehicle, "Lender": lender},
+            fees,
+            {
+                "Client Payout": f"${client_payout:,.2f}",
+                "Broker One Retained": f"${dealer_remit:,.2f}"
+            },
+            signature="Approved by CEO – Broker One Finance"
+        )
 
-    y = height - 1.25 * inch
-    c.setFont("Helvetica-Bold", 18)
-    c.drawCentredString(width / 2, y, title)
-
-    y -= 0.75 * inch
-    c.setFont("Helvetica", 10)
-
-    for label, value in lines:
-        c.drawString(1.25 * inch, y, label)
-        c.drawRightString(width - 1.25 * inch, y, value)
-        y -= 0.25 * inch
-
-        if y < 1.5 * inch:
-            c.showPage()
-            y = height - 1.25 * inch
-            c.setFont("Helvetica", 10)
-
-    c.setFont("Helvetica-Oblique", 9)
-    c.drawCentredString(width / 2, 0.75 * inch, footer)
-
-    c.save()
-    buffer.seek(0)
-    return buffer
-
-# ------------------------------------------------------------
-# PDF DOWNLOADS (ROLE-SPECIFIC)
-# ------------------------------------------------------------
-today = datetime.now().strftime("%B %d, %Y")
-
-if role == "client":
-    pdf = generate_pdf(
-        "Equity Participation Estimate",
-        [
-            ("Client", client_name),
-            ("Retail Vehicle Value", f"${retail_value:,.2f}"),
-            ("Buy Now Price", f"${buy_now:,.2f}"),
-            ("Partner / Floor Plan Fee (10%)", f"${partner_fee:,.2f}"),
-            ("Equity Percentage", f"{equity_pct*100:.1f}%"),
-            ("Estimated Payout", f"${equity_payout:,.2f}")
-        ],
-        "This document is an estimate only. Fees and payouts may vary."
-    )
-    st.download_button("Download Client Estimate PDF", pdf, "client_estimate.pdf")
-
-elif role == "sales":
-    pdf = generate_pdf(
-        "Client Participation Summary",
-        [
-            ("Client", client_name),
-            ("Vehicle", vehicle_desc),
-            ("Lender", lender),
-            ("Partner / Floor Plan Fee (10%)", f"${partner_fee:,.2f}"),
-            ("Equity Percentage", f"{equity_pct*100:.1f}%"),
-            ("Equity Payout", f"${equity_payout:,.2f}")
-        ],
-        f"Prepared {today} – Broker One Finance"
-    )
-    st.download_button("Download Sales PDF", pdf, "sales_summary.pdf")
-
-elif role == "dealer":
-    pdf = generate_pdf(
-        "Dealer Service Payment Summary",
-        [
-            ("Client", client_name),
-            ("Dealer", dealer_name),
-            ("Partner / Floor Plan Fee (10%)", f"${partner_fee:,.2f}"),
-            ("Equity Payout", f"${equity_payout:,.2f}"),
-            ("Referral Fee (60%)", f"${referral_fee:,.2f}"),
-            ("Marketing Fee (40%)", f"${marketing_fee:,.2f}")
-        ],
-        f"Authorized by {dealer_name}"
-    )
-    st.download_button("Download Dealer PDF", pdf, "dealer_summary.pdf")
-
-elif role == "admin":
-    pdf = generate_pdf(
-        "Equity Participation Fee Summary",
-        [
-            ("Client", client_name),
-            ("Gross Equity", f"${gross_equity:,.2f}"),
-            ("Partner / Floor Plan Fee (10%)", f"${partner_fee:,.2f}"),
-            ("Client Payout", f"${equity_payout:,.2f}"),
-            ("Broker One Remittance", f"${dealer_remittance:,.2f}")
-        ],
-        f"Approved by Broker One Finance – {today}"
-    )
-    st.download_button("Download Internal PDF", pdf, "internal_summary.pdf")
+    st.download_button("Download PDF", pdf, file_name="lbop_summary.pdf")
