@@ -105,7 +105,11 @@ st.header("Standard Fees")
 dealer_fee = st.number_input("Dealer Fee", value=2000.0)
 auction_fee = st.number_input("Auction Fee", value=1050.0)
 registration_fee = st.number_input("Registration Fee", value=250.0)
-partner_fee = st.number_input("Partner / Floor Plan Fee", value=1100.0)
+
+# 🔁 CHANGED: Partner / Floor Plan Fee = 10% of Buy Now
+partner_fee = buy_now * 0.10
+st.info(f"Partner / Floor Plan Fee (10% of Buy Now): ${partner_fee:,.2f}")
+
 transport_fee = st.number_input("Transport Fee", value=1000.0)
 storage_fee = st.number_input("Storage Fee", value=300.0)
 
@@ -228,6 +232,7 @@ if role == "client":
             ("Client", client_name),
             ("Retail Vehicle Value", f"${retail_value:,.2f}"),
             ("Buy Now Price", f"${buy_now:,.2f}"),
+            ("Partner / Floor Plan Fee (10%)", f"${partner_fee:,.2f}"),
             ("Equity Percentage", f"{equity_pct*100:.1f}%"),
             ("Estimated Payout", f"${equity_payout:,.2f}")
         ],
@@ -242,6 +247,7 @@ elif role == "sales":
             ("Client", client_name),
             ("Vehicle", vehicle_desc),
             ("Lender", lender),
+            ("Partner / Floor Plan Fee (10%)", f"${partner_fee:,.2f}"),
             ("Equity Percentage", f"{equity_pct*100:.1f}%"),
             ("Equity Payout", f"${equity_payout:,.2f}")
         ],
@@ -255,6 +261,7 @@ elif role == "dealer":
         [
             ("Client", client_name),
             ("Dealer", dealer_name),
+            ("Partner / Floor Plan Fee (10%)", f"${partner_fee:,.2f}"),
             ("Equity Payout", f"${equity_payout:,.2f}"),
             ("Referral Fee (60%)", f"${referral_fee:,.2f}"),
             ("Marketing Fee (40%)", f"${marketing_fee:,.2f}")
@@ -269,6 +276,7 @@ elif role == "admin":
         [
             ("Client", client_name),
             ("Gross Equity", f"${gross_equity:,.2f}"),
+            ("Partner / Floor Plan Fee (10%)", f"${partner_fee:,.2f}"),
             ("Client Payout", f"${equity_payout:,.2f}"),
             ("Broker One Remittance", f"${dealer_remittance:,.2f}")
         ],
