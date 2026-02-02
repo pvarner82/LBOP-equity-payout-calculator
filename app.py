@@ -59,11 +59,10 @@ def equity_percentage(buy_now):
     for i in range(len(ANCHORS) - 1):
         low_price, low_pct = ANCHORS[i]
         high_price, high_pct = ANCHORS[i + 1]
-
         if low_price <= buy_now <= high_price:
-            position = (buy_now - low_price) / (high_price - low_price)
-            pct = low_pct - position * (low_pct - high_pct)
-            return math.floor(pct * 10) / 10  # truncate to 1 decimal
+            pos = (buy_now - low_price) / (high_price - low_price)
+            pct = low_pct - pos * (low_pct - high_pct)
+            return math.floor(pct * 10) / 10
 
 # =========================
 # UI INPUTS
@@ -92,11 +91,14 @@ buy_now = st.number_input("Buy Now Price (Vehicle Acquisition)", min_value=0.0)
 # =========================
 st.subheader("Standard Fees")
 
-dealer_fee = st.number_input("Dealer Fee", value=2000.0)
-auction_fee = st.number_input("Auction Fee", value=1050.0)
-registration_fee = st.number_input("Registration Fee", value=250.0)
-transport_fee = st.number_input("Transport Fee", value=1000.0)
-storage_fee = st.number_input("Storage Fee", value=300.0)
+# Editable only if NOT client
+lock = ROLE == "client"
+
+dealer_fee = st.number_input("Dealer Fee", value=2000.0, disabled=lock)
+auction_fee = st.number_input("Auction Fee", value=1050.0, disabled=lock)
+registration_fee = st.number_input("Registration Fee", value=250.0, disabled=lock)
+transport_fee = st.number_input("Transport Fee", value=1000.0, disabled=lock)
+storage_fee = st.number_input("Storage Fee", value=300.0, disabled=lock)
 
 partner_fee = buy_now * 0.10
 st.text(f"Partner / Floor Plan Fee (10% of Buy Now): ${partner_fee:,.2f}")
@@ -104,7 +106,9 @@ st.text(f"Partner / Floor Plan Fee (10% of Buy Now): ${partner_fee:,.2f}")
 sales_tax = retail_value * 0.07
 st.text(f"Sales Tax (7%): ${sales_tax:,.2f}")
 
-additional_tax_pct = st.number_input("Additional Tax (%)", value=0.0)
+additional_tax_pct = st.number_input(
+    "Additional Tax (%)", value=0.0, disabled=lock
+)
 additional_tax = retail_value * (additional_tax_pct / 100)
 
 # =========================
@@ -149,6 +153,7 @@ marketing_fee = dealer_remaining * 0.40
 st.subheader("Results")
 
 if ROLE in ["client", "sales"]:
+    st.metric("Total Equity Pool", f"${equity_pool:,.2f}")
     st.metric("Equity Participation %", f"{equity_pct}%")
     st.metric("Client Equity Payout", f"${client_payout:,.2f}")
 
@@ -157,7 +162,7 @@ elif ROLE == "dealer":
     st.metric("Marketing Fee (40%)", f"${marketing_fee:,.2f}")
 
 elif ROLE == "admin":
-    st.metric("Equity Participation %", f"{equity_pct}%")
+    st.metric("Total Equity Pool", f"${equity_pool:,.2f}")
     st.metric("Client Equity Payout", f"${client_payout:,.2f}")
     st.metric("Broker One Retained", f"${dealer_remaining:,.2f}")
 
