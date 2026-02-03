@@ -36,7 +36,7 @@ if not st.session_state.logged_in:
 ROLE = st.session_state.role
 
 # =========================
-# SLIDING SCALE (TUNED)
+# SLIDING SCALE
 # =========================
 ANCHORS = [
     (3000, 60.0),
@@ -55,13 +55,12 @@ def equity_percentage(buy_now):
         return 60.0
     if buy_now >= 19000:
         return 42.5
-
     for i in range(len(ANCHORS) - 1):
-        low_price, low_pct = ANCHORS[i]
-        high_price, high_pct = ANCHORS[i + 1]
-        if low_price <= buy_now <= high_price:
-            pos = (buy_now - low_price) / (high_price - low_price)
-            pct = low_pct - pos * (low_pct - high_pct)
+        low, lp = ANCHORS[i]
+        high, hp = ANCHORS[i + 1]
+        if low <= buy_now <= high:
+            pos = (buy_now - low) / (high - low)
+            pct = lp - pos * (lp - hp)
             return math.floor(pct * 10) / 10
 
 # =========================
@@ -121,7 +120,7 @@ if ROLE != "client":
             additional_fees[name] = amt
 
 # =========================
-# PARTNER FLOOR PLAN FEE (FINAL RULE)
+# PARTNER FLOOR PLAN FEE
 # =========================
 partner_base = (
     buy_now
@@ -133,11 +132,10 @@ partner_base = (
 
 partner_fee = partner_base * 0.10
 
-st.text(
-    f"Partner / Floor Plan Fee "
-    f"(10% of Buy Now + applicable fees, excluding dealer, registration & tax): "
-    f"${partner_fee:,.2f}"
-)
+if ROLE in ["dealer", "admin"]:
+    st.subheader("Partner / Floor Plan Fee Breakdown")
+    st.text(f"Partner Fee Base Total: ${partner_base:,.2f}")
+    st.text(f"Partner Floor Plan Fee (10%): ${partner_fee:,.2f}")
 
 # =========================
 # CALCULATIONS
