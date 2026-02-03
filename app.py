@@ -36,7 +36,7 @@ if not st.session_state.logged_in:
 ROLE = st.session_state.role
 
 # =========================
-# SLIDING SCALE v2 (TUNED)
+# SLIDING SCALE (TUNED)
 # =========================
 ANCHORS = [
     (3000, 60.0),
@@ -91,7 +91,6 @@ buy_now = st.number_input("Buy Now Price (Vehicle Acquisition)", min_value=0.0)
 # =========================
 st.subheader("Standard Fees")
 
-# Editable only if NOT client
 lock = ROLE == "client"
 
 dealer_fee = st.number_input("Dealer Fee", value=2000.0, disabled=lock)
@@ -100,15 +99,13 @@ registration_fee = st.number_input("Registration Fee", value=250.0, disabled=loc
 transport_fee = st.number_input("Transport Fee", value=1000.0, disabled=lock)
 storage_fee = st.number_input("Storage Fee", value=300.0, disabled=lock)
 
-partner_fee = buy_now * 0.10
-st.text(f"Partner / Floor Plan Fee (10% of Buy Now): ${partner_fee:,.2f}")
-
+# =========================
+# TAXES
+# =========================
 sales_tax = retail_value * 0.07
 st.text(f"Sales Tax (7%): ${sales_tax:,.2f}")
 
-additional_tax_pct = st.number_input(
-    "Additional Tax (%)", value=0.0, disabled=lock
-)
+additional_tax_pct = st.number_input("Additional Tax (%)", value=0.0, disabled=lock)
 additional_tax = retail_value * (additional_tax_pct / 100)
 
 # =========================
@@ -122,6 +119,25 @@ if ROLE != "client":
         amt = st.number_input(f"Fee Amount {i+1}", min_value=0.0)
         if name:
             additional_fees[name] = amt
+
+# =========================
+# PARTNER FLOOR PLAN FEE (FINAL RULE)
+# =========================
+partner_base = (
+    buy_now
+    + auction_fee
+    + transport_fee
+    + storage_fee
+    + sum(additional_fees.values())
+)
+
+partner_fee = partner_base * 0.10
+
+st.text(
+    f"Partner / Floor Plan Fee "
+    f"(10% of Buy Now + applicable fees, excluding dealer, registration & tax): "
+    f"${partner_fee:,.2f}"
+)
 
 # =========================
 # CALCULATIONS
@@ -140,15 +156,16 @@ fees.update(additional_fees)
 
 total_fees = sum(fees.values())
 equity_pool = retail_value - buy_now - total_fees
+
 equity_pct = equity_percentage(buy_now)
 client_payout = equity_pool * (equity_pct / 100)
 
-dealer_remaining = equity_pool - client_payout
-referral_fee = dealer_remaining * 0.60
-marketing_fee = dealer_remaining * 0.40
+dealer_pool = equity_pool
+referral_fee = dealer_pool * 0.60
+marketing_fee = dealer_pool * 0.40
 
 # =========================
-# RESULTS (ROLE-CORRECT)
+# RESULTS
 # =========================
 st.subheader("Results")
 
@@ -164,7 +181,7 @@ elif ROLE == "dealer":
 elif ROLE == "admin":
     st.metric("Total Equity Pool", f"${equity_pool:,.2f}")
     st.metric("Client Equity Payout", f"${client_payout:,.2f}")
-    st.metric("Broker One Retained", f"${dealer_remaining:,.2f}")
+    st.metric("Broker One Retained", f"${dealer_pool:,.2f}")
 
 # =========================
 # PDF BUILDER
@@ -238,7 +255,7 @@ if st.button("Download PDF"):
     elif ROLE == "dealer":
         pdf = build_pdf(
             "Dealer Service Payment Summary",
-            {"Client": client_name, "Dealer": dealer_name},
+            {"Dealer": dealer_name},
             fees,
             {
                 "Referral Fee (60%)": f"${referral_fee:,.2f}",
@@ -255,7 +272,7 @@ if st.button("Download PDF"):
             {
                 "Total Equity Pool": f"${equity_pool:,.2f}",
                 "Client Payout": f"${client_payout:,.2f}",
-                "Broker One Retained": f"${dealer_remaining:,.2f}",
+                "Broker One Retained": f"${dealer_pool:,.2f}",
             },
             signature="Approved by Broker One Finance – CEO"
         )
