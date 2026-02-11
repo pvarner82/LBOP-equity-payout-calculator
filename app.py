@@ -229,6 +229,8 @@ if ROLE == "admin":
         "Dealership": dealer_name,
         "Vehicle": vehicle,
         "Credit Union": lender,
+        "Retail Value": f"${retail_value:,.2f}",
+        "Buy Now Price": f"${buy_now:,.2f}",
         "Date": today
     }
 
