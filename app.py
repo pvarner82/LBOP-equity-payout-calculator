@@ -225,7 +225,25 @@ def build_pdf(title, header, fees, results, footer="", signature=None):
 if st.button("Download PDF"):
     today = date.today().strftime("%B %d, %Y")
 
-    if ROLE == "client":
+    if ROLE == "dealer":
+        pdf = build_pdf(
+            "Dealer Service Payment Summary",
+            {
+                "Client": client_name,
+                "Vehicle": vehicle,
+                "Credit Union": lender,
+                "Dealership": dealer_name,
+                "Date": today
+            },
+            fees,
+            {
+                "Referral Fee (60%)": f"${referral_fee:,.2f}",
+                "Marketing Fee (40%)": f"${marketing_fee:,.2f}",
+            },
+            signature=f"Authorized by {dealer_name}"
+        )
+
+    elif ROLE == "client":
         pdf = build_pdf(
             "Equity Participation Estimate",
             {"Client": client_name, "Date": today},
@@ -248,18 +266,6 @@ if st.button("Download PDF"):
                 "Equity %": f"{equity_pct}%",
                 "Client Payout": f"${client_payout:,.2f}",
             }
-        )
-
-    elif ROLE == "dealer":
-        pdf = build_pdf(
-            "Dealer Service Payment Summary",
-            {"Dealer": dealer_name},
-            fees,
-            {
-                "Referral Fee (60%)": f"${referral_fee:,.2f}",
-                "Marketing Fee (40%)": f"${marketing_fee:,.2f}",
-            },
-            signature=f"Authorized by {dealer_name}"
         )
 
     else:
