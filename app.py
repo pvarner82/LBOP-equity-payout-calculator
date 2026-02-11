@@ -153,10 +153,8 @@ equity_pool = retail_value - buy_now - total_fees
 equity_pct = equity_percentage(buy_now)
 client_payout = equity_pool * (equity_pct / 100)
 
-# ✅ CORRECT BROKER RETAINED
 broker_one_retained = equity_pool - client_payout
 
-# Dealer 60/40
 referral_fee = equity_pool * 0.60
 marketing_fee = equity_pool * 0.40
 
@@ -226,11 +224,19 @@ today = date.today().strftime("%B %d, %Y")
 if ROLE == "admin":
     col1, col2 = st.columns(2)
 
+    header_data = {
+        "Client": client_name,
+        "Dealership": dealer_name,
+        "Vehicle": vehicle,
+        "Credit Union": lender,
+        "Date": today
+    }
+
     with col1:
         if st.button("Download Admin PDF (No Broker Profit)"):
             pdf = build_pdf(
                 "Equity Participation Fee Summary",
-                {"Client": client_name, "Date": today},
+                header_data,
                 fees,
                 {
                     "Total Equity Pool": f"${equity_pool:,.2f}",
@@ -244,7 +250,7 @@ if ROLE == "admin":
         if st.button("Download Admin PDF (With Broker Profit)"):
             pdf = build_pdf(
                 "Equity Participation Fee Summary",
-                {"Client": client_name, "Date": today},
+                header_data,
                 fees,
                 {
                     "Total Equity Pool": f"${equity_pool:,.2f}",
