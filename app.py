@@ -132,11 +132,6 @@ partner_base = (
 
 partner_fee = partner_base * 0.10
 
-if ROLE in ["dealer", "admin"]:
-    st.subheader("Partner / Floor Plan Fee Breakdown")
-    st.text(f"Partner Fee Base Total: ${partner_base:,.2f}")
-    st.text(f"Partner Floor Plan Fee (10%): ${partner_fee:,.2f}")
-
 # =========================
 # CALCULATIONS
 # =========================
@@ -158,9 +153,12 @@ equity_pool = retail_value - buy_now - total_fees
 equity_pct = equity_percentage(buy_now)
 client_payout = equity_pool * (equity_pct / 100)
 
-dealer_pool = equity_pool
-referral_fee = dealer_pool * 0.60
-marketing_fee = dealer_pool * 0.40
+# ✅ CORRECT BROKER RETAINED
+broker_one_retained = equity_pool - client_payout
+
+# Dealer 60/40
+referral_fee = equity_pool * 0.60
+marketing_fee = equity_pool * 0.40
 
 # =========================
 # RESULTS
@@ -178,8 +176,9 @@ elif ROLE == "dealer":
 
 elif ROLE == "admin":
     st.metric("Total Equity Pool", f"${equity_pool:,.2f}")
+    st.metric("Equity Participation %", f"{equity_pct}%")
     st.metric("Client Equity Payout", f"${client_payout:,.2f}")
-    st.metric("Broker One Retained", f"${dealer_pool:,.2f}")
+    st.metric("Broker One Retained", f"${broker_one_retained:,.2f}")
 
 # =========================
 # PDF BUILDER
@@ -222,63 +221,37 @@ def build_pdf(title, header, fees, results, footer="", signature=None):
 # =========================
 # PDF DOWNLOAD
 # =========================
-if st.button("Download PDF"):
-    today = date.today().strftime("%B %d, %Y")
+today = date.today().strftime("%B %d, %Y")
 
-    if ROLE == "dealer":
-        pdf = build_pdf(
-            "Dealer Service Payment Summary",
-            {
-                "Client": client_name,
-                "Vehicle": vehicle,
-                "Credit Union": lender,
-                "Dealership": dealer_name,
-                "Date": today
-            },
-            fees,
-            {
-                "Referral Fee (60%)": f"${referral_fee:,.2f}",
-                "Marketing Fee (40%)": f"${marketing_fee:,.2f}",
-            },
-            signature=f"Authorized by {dealer_name}"
-        )
+if ROLE == "admin":
+    col1, col2 = st.columns(2)
 
-    elif ROLE == "client":
-        pdf = build_pdf(
-            "Equity Participation Estimate",
-            {"Client": client_name, "Date": today},
-            fees,
-            {
-                "Total Equity Pool": f"${equity_pool:,.2f}",
-                "Equity %": f"{equity_pct}%",
-                "Estimated Client Payout": f"${client_payout:,.2f}",
-            },
-            footer="This document is an estimate only. Final figures may vary."
-        )
+    with col1:
+        if st.button("Download Admin PDF (No Broker Profit)"):
+            pdf = build_pdf(
+                "Equity Participation Fee Summary",
+                {"Client": client_name, "Date": today},
+                fees,
+                {
+                    "Total Equity Pool": f"${equity_pool:,.2f}",
+                    "Equity %": f"{equity_pct}%",
+                    "Client Payout": f"${client_payout:,.2f}",
+                }
+            )
+            st.download_button("Download File", pdf, "admin_summary_no_profit.pdf")
 
-    elif ROLE == "sales":
-        pdf = build_pdf(
-            "Client Participation Summary",
-            {"Client": client_name, "Vehicle": vehicle, "Lender": lender},
-            fees,
-            {
-                "Total Equity Pool": f"${equity_pool:,.2f}",
-                "Equity %": f"{equity_pct}%",
-                "Client Payout": f"${client_payout:,.2f}",
-            }
-        )
-
-    else:
-        pdf = build_pdf(
-            "Equity Participation Fee Summary",
-            {"Client": client_name, "Date": today},
-            fees,
-            {
-                "Total Equity Pool": f"${equity_pool:,.2f}",
-                "Client Payout": f"${client_payout:,.2f}",
-                "Broker One Retained": f"${dealer_pool:,.2f}",
-            },
-            signature="Approved by Broker One Finance – CEO"
-        )
-
-    st.download_button("Download PDF File", pdf, "lbop_summary.pdf")
+    with col2:
+        if st.button("Download Admin PDF (With Broker Profit)"):
+            pdf = build_pdf(
+                "Equity Participation Fee Summary",
+                {"Client": client_name, "Date": today},
+                fees,
+                {
+                    "Total Equity Pool": f"${equity_pool:,.2f}",
+                    "Equity %": f"{equity_pct}%",
+                    "Client Payout": f"${client_payout:,.2f}",
+                    "Broker One Retained": f"${broker_one_retained:,.2f}",
+                },
+                signature="Approved by Broker One Finance – CEO"
+            )
+            st.download_button("Download File", pdf, "admin_summary_with_profit.pdf")
