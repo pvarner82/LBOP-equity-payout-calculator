@@ -36,24 +36,27 @@ if not st.session_state.logged_in:
 ROLE = st.session_state.role
 
 # =========================
-# SLIDING SCALE
+# UPDATED SLIDING SCALE (MAX 25,000)
 # =========================
 ANCHORS = [
     (3000, 60.0),
-    (5000, 58.0),
-    (7000, 56.5),
-    (9000, 55.0),
-    (11000, 52.5),
-    (13000, 50.0),
-    (15000, 47.5),
-    (17000, 45.0),
-    (19000, 42.5),
+    (5000, 58.5),
+    (7000, 57.0),
+    (9000, 55.5),
+    (11000, 54.0),
+    (13000, 52.0),
+    (15000, 50.0),
+    (17000, 48.0),
+    (19000, 46.0),
+    (21000, 44.5),
+    (23000, 43.5),
+    (25000, 42.5),
 ]
 
 def equity_percentage(buy_now):
     if buy_now <= 3000:
         return 60.0
-    if buy_now >= 19000:
+    if buy_now >= 25000:
         return 42.5
     for i in range(len(ANCHORS) - 1):
         low, lp = ANCHORS[i]
@@ -108,16 +111,16 @@ additional_tax_pct = st.number_input("Additional Tax (%)", value=0.0, disabled=l
 additional_tax = retail_value * (additional_tax_pct / 100)
 
 # =========================
-# ADDITIONAL FEES
+# ADDITIONAL FEES (NOW AVAILABLE FOR CLIENT TOO)
 # =========================
 additional_fees = {}
-if ROLE != "client":
-    count = st.number_input("Number of Additional Fees", 0, 10, 0)
-    for i in range(count):
-        name = st.text_input(f"Fee Name {i+1}")
-        amt = st.number_input(f"Fee Amount {i+1}", min_value=0.0)
-        if name:
-            additional_fees[name] = amt
+count = st.number_input("Number of Additional Fees", 0, 10, 0)
+
+for i in range(count):
+    name = st.text_input(f"Fee Name {i+1}")
+    amt = st.number_input(f"Fee Amount {i+1}", min_value=0.0)
+    if name:
+        additional_fees[name] = amt
 
 # =========================
 # PARTNER FLOOR PLAN FEE
