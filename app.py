@@ -111,8 +111,10 @@ additional_tax_pct = st.number_input("Additional Tax (%)", value=0.0, disabled=l
 additional_tax = retail_value * (additional_tax_pct / 100)
 
 # =========================
-# ADDITIONAL FEES (NOW AVAILABLE FOR CLIENT TOO)
+# ADDITIONAL FEES (CLIENT INCLUDED)
 # =========================
+st.subheader("Additional Fees")
+
 additional_fees = {}
 count = st.number_input("Number of Additional Fees", 0, 10, 0)
 
@@ -218,51 +220,3 @@ def build_pdf(title, header, fees, results, footer="", signature=None):
     doc.build(story)
     buf.seek(0)
     return buf
-
-# =========================
-# PDF DOWNLOAD
-# =========================
-today = date.today().strftime("%B %d, %Y")
-
-if ROLE == "admin":
-    col1, col2 = st.columns(2)
-
-    header_data = {
-        "Client": client_name,
-        "Dealership": dealer_name,
-        "Vehicle": vehicle,
-        "Credit Union": lender,
-        "Retail Value": f"${retail_value:,.2f}",
-        "Buy Now Price": f"${buy_now:,.2f}",
-        "Date": today
-    }
-
-    with col1:
-        if st.button("Download Admin PDF (No Broker Profit)"):
-            pdf = build_pdf(
-                "Equity Participation Fee Summary",
-                header_data,
-                fees,
-                {
-                    "Total Equity Pool": f"${equity_pool:,.2f}",
-                    "Equity %": f"{equity_pct}%",
-                    "Client Payout": f"${client_payout:,.2f}",
-                }
-            )
-            st.download_button("Download File", pdf, "admin_summary_no_profit.pdf")
-
-    with col2:
-        if st.button("Download Admin PDF (With Broker Profit)"):
-            pdf = build_pdf(
-                "Equity Participation Fee Summary",
-                header_data,
-                fees,
-                {
-                    "Total Equity Pool": f"${equity_pool:,.2f}",
-                    "Equity %": f"{equity_pct}%",
-                    "Client Payout": f"${client_payout:,.2f}",
-                    "Broker One Retained": f"${broker_one_retained:,.2f}",
-                },
-                signature="Approved by Broker One Finance – CEO"
-            )
-            st.download_button("Download File", pdf, "admin_summary_with_profit.pdf")
