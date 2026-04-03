@@ -36,25 +36,24 @@ if not st.session_state.logged_in:
 ROLE = st.session_state.role
 
 # =========================
-# UPDATED SLIDING SCALE (MAX 25,000)
+# UPDATED SLIDING SCALE (MAX 25,000 / MIN 5,000)
 # =========================
 ANCHORS = [
-    (3000, 60.0),
-    (5000, 58.5),
-    (7000, 57.0),
-    (9000, 55.5),
-    (11000, 54.0),
-    (13000, 52.0),
-    (15000, 50.0),
-    (17000, 48.0),
-    (19000, 46.0),
-    (21000, 44.5),
-    (23000, 43.5),
+    (5000, 60.0),
+    (7000, 58.5),
+    (9000, 57.0),
+    (11000, 55.5),
+    (13000, 54.0),
+    (15000, 52.0),
+    (17000, 50.0),
+    (19000, 48.0),
+    (21000, 46.0),
+    (23000, 44.5),
     (25000, 42.5),
 ]
 
 def equity_percentage(buy_now):
-    if buy_now <= 3000:
+    if buy_now <= 5000:
         return 60.0
     if buy_now >= 25000:
         return 42.5
@@ -100,6 +99,7 @@ auction_fee = st.number_input("Auction Fee", value=1050.0, disabled=lock)
 registration_fee = st.number_input("Registration Fee", value=250.0, disabled=lock)
 transport_fee = st.number_input("Transport Fee", value=1000.0, disabled=lock)
 storage_fee = st.number_input("Storage Fee", value=300.0, disabled=lock)
+protection_fee = st.number_input("90 Day Protection Fee", value=1500.0, disabled=lock)
 
 # =========================
 # TAXES
@@ -111,7 +111,7 @@ additional_tax_pct = st.number_input("Additional Tax (%)", value=0.0, disabled=l
 additional_tax = retail_value * (additional_tax_pct / 100)
 
 # =========================
-# ADDITIONAL FEES (CLIENT INCLUDED)
+# ADDITIONAL FEES
 # =========================
 st.subheader("Additional Fees")
 
@@ -132,10 +132,12 @@ partner_base = (
     + auction_fee
     + transport_fee
     + storage_fee
+    + protection_fee
     + sum(additional_fees.values())
 )
 
 partner_fee = partner_base * 0.10
+st.text(f"Partner / Floor Plan Fee (10%): ${partner_fee:,.2f}")
 
 # =========================
 # CALCULATIONS
@@ -146,6 +148,7 @@ fees = {
     "Registration Fee": registration_fee,
     "Transport Fee": transport_fee,
     "Storage Fee": storage_fee,
+    "90 Day Protection Fee": protection_fee,
     "Partner / Floor Plan Fee (10%)": partner_fee,
     "Sales Tax (7%)": sales_tax,
     "Additional Tax": additional_tax,
@@ -198,14 +201,14 @@ def build_pdf(title, header, fees, results, footer="", signature=None):
     def make_table(data):
         t = Table(data, colWidths=[280, 200])
         t.setStyle(TableStyle([
-            ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
-            ("BACKGROUND", (0,0), (-1,0), colors.whitesmoke)
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke)
         ]))
         return t
 
     story.append(make_table([["Field", "Value"]] + list(header.items())))
     story.append(Spacer(1, 14))
-    story.append(make_table([["Fee", "Amount"]] + [(k, f"${v:,.2f}") for k,v in fees.items()]))
+    story.append(make_table([["Fee", "Amount"]] + [(k, f"${v:,.2f}") for k, v in fees.items()]))
     story.append(Spacer(1, 14))
     story.append(make_table([["Metric", "Value"]] + list(results.items())))
 
@@ -220,3 +223,107 @@ def build_pdf(title, header, fees, results, footer="", signature=None):
     doc.build(story)
     buf.seek(0)
     return buf
+
+# =========================
+# PDF DOWNLOAD / PRINT OPTIONS
+# =========================
+today = date.today().strftime("%B %d, %Y")
+
+if ROLE == "client":
+    pdf = build_pdf(
+        "Equity Participation Estimate",
+        {
+            "Client": client_name,
+            "Retail Value": f"${retail_value:,.2f}",
+            "Buy Now Price": f"${buy_now:,.2f}",
+            "Date": today
+        },
+        fees,
+        {
+            "Total Equity Pool": f"${equity_pool:,.2f}",
+            "Equity %": f"{equity_pct}%",
+            "Estimated Client Payout": f"${client_payout:,.2f}",
+        },
+        footer="This document is an estimate only. Final figures may vary."
+    )
+    st.download_button("Print / Download Client PDF", pdf, "client_estimate.pdf")
+
+elif ROLE == "sales":
+    pdf = build_pdf(
+        "Client Participation Summary",
+        {
+            "Client": client_name,
+            "Vehicle": vehicle,
+            "Credit Union": lender,
+            "Retail Value": f"${retail_value:,.2f}",
+            "Buy Now Price": f"${buy_now:,.2f}",
+            "Date": today
+        },
+        fees,
+        {
+            "Total Equity Pool": f"${equity_pool:,.2f}",
+            "Equity %": f"{equity_pct}%",
+            "Client Payout": f"${client_payout:,.2f}",
+        }
+    )
+    st.download_button("Print / Download Sales PDF", pdf, "sales_summary.pdf")
+
+elif ROLE == "dealer":
+    pdf = build_pdf(
+        "Dealer Service Payment Summary",
+        {
+            "Client": client_name,
+            "Vehicle": vehicle,
+            "Credit Union": lender,
+            "Dealership": dealer_name,
+            "Date": today
+        },
+        fees,
+        {
+            "Referral Fee (60%)": f"${referral_fee:,.2f}",
+            "Marketing Fee (40%)": f"${marketing_fee:,.2f}",
+        },
+        signature=f"Authorized by {dealer_name}"
+    )
+    st.download_button("Print / Download Dealer PDF", pdf, "dealer_summary.pdf")
+
+elif ROLE == "admin":
+    col1, col2 = st.columns(2)
+
+    header_data = {
+        "Client": client_name,
+        "Dealership": dealer_name,
+        "Vehicle": vehicle,
+        "Credit Union": lender,
+        "Retail Value": f"${retail_value:,.2f}",
+        "Buy Now Price": f"${buy_now:,.2f}",
+        "Date": today
+    }
+
+    with col1:
+        pdf_no_profit = build_pdf(
+            "Equity Participation Fee Summary",
+            header_data,
+            fees,
+            {
+                "Total Equity Pool": f"${equity_pool:,.2f}",
+                "Equity %": f"{equity_pct}%",
+                "Client Payout": f"${client_payout:,.2f}",
+            }
+        )
+        st.download_button("Print / Download Admin PDF (No Broker Profit)", pdf_no_profit, "admin_summary_no_profit.pdf")
+
+    with col2:
+        pdf_with_profit = build_pdf(
+            "Equity Participation Fee Summary",
+            header_data,
+            fees,
+            {
+                "Total Equity Pool": f"${equity_pool:,.2f}",
+                "Equity %": f"{equity_pct}%",
+                "Client Payout": f"${client_payout:,.2f}",
+                "Broker One Retained": f"${broker_one_retained:,.2f}",
+            },
+            signature="Approved by Broker One Finance – CEO"
+        )
+        st.download_button("Print / Download Admin PDF (With Broker Profit)", pdf_with_profit, "admin_summary_with_profit.pdf")
