@@ -327,3 +327,10 @@ elif ROLE == "admin":
             signature="Approved by Broker One Finance – CEO"
         )
         st.download_button("Print / Download Admin PDF (With Broker Profit)", pdf_with_profit, "admin_summary_with_profit.pdf")
+
+# =========================
+# BACK TO CALCULATOR BUTTON
+# =========================
+st.markdown("---")
+if st.button("Back to Calculator"):
+    st.experimental_rerun()
