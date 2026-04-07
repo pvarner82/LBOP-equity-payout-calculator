@@ -169,6 +169,10 @@ marketing_fee = equity_pool * 0.40
 # =========================
 # RESULTS
 # =========================
+if ROLE == "dealer":
+    st.subheader("Funds Available After All Fees")
+    st.metric("Total Funds Left After All Fees", f"${equity_pool:,.2f}")
+
 st.subheader("Results")
 
 if ROLE in ["client", "sales"]:
@@ -280,6 +284,7 @@ elif ROLE == "dealer":
         },
         fees,
         {
+            "Total Funds Left After All Fees": f"${equity_pool:,.2f}",
             "Referral Fee (60%)": f"${referral_fee:,.2f}",
             "Marketing Fee (40%)": f"${marketing_fee:,.2f}",
         },
