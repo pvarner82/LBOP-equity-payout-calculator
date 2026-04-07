@@ -136,8 +136,17 @@ partner_base = (
     + sum(additional_fees.values())
 )
 
-partner_fee = partner_base * 0.10
-st.text(f"Partner / Floor Plan Fee (10%): ${partner_fee:,.2f}")
+auto_partner_fee = partner_base * 0.10
+
+if ROLE == "client":
+    partner_fee = auto_partner_fee
+    st.text(f"Partner / Floor Plan Fee (10%): ${partner_fee:,.2f}")
+else:
+    partner_fee = st.number_input(
+        "Partner / Floor Plan Fee (10%)",
+        value=float(auto_partner_fee),
+        min_value=0.0
+    )
 
 # =========================
 # CALCULATIONS
