@@ -370,8 +370,21 @@ elif ROLE == "admin":
         )
 
 # =========================
-# BACK TO CALCULATOR BUTTON
+# BACK TO CALCULATOR LINK
 # =========================
 st.markdown("---")
-if st.button("Back to Calculator"):
-    st.experimental_rerun()
+st.markdown(
+    """
+    <a href="./" target="_self" style="
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        background-color: #f0f2f6;
+        color: #262730;
+        text-decoration: none;
+        border: 1px solid #d3d3d3;
+        font-weight: 600;
+    ">Back to Calculator</a>
+    """,
+    unsafe_allow_html=True
+)
