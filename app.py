@@ -235,7 +235,7 @@ def build_pdf(title, header, fees, results, footer="", signature=None):
 
     doc.build(story)
     buf.seek(0)
-    return buf
+    return buf.getvalue()
 
 # =========================
 # PDF DOWNLOAD / PRINT OPTIONS
@@ -243,7 +243,7 @@ def build_pdf(title, header, fees, results, footer="", signature=None):
 today = date.today().strftime("%B %d, %Y")
 
 if ROLE == "client":
-    pdf = build_pdf(
+    client_pdf = build_pdf(
         "Equity Participation Estimate",
         {
             "Client": client_name,
@@ -259,10 +259,15 @@ if ROLE == "client":
         },
         footer="This document is an estimate only. Final figures may vary."
     )
-    st.download_button("Print / Download Client PDF", pdf, "client_estimate.pdf")
+    st.download_button(
+        "Print / Download Client PDF",
+        client_pdf,
+        file_name="client_estimate.pdf",
+        mime="application/pdf"
+    )
 
 elif ROLE == "sales":
-    pdf = build_pdf(
+    sales_pdf = build_pdf(
         "Client Participation Summary",
         {
             "Client": client_name,
@@ -279,10 +284,15 @@ elif ROLE == "sales":
             "Client Payout": f"${client_payout:,.2f}",
         }
     )
-    st.download_button("Print / Download Sales PDF", pdf, "sales_summary.pdf")
+    st.download_button(
+        "Print / Download Sales PDF",
+        sales_pdf,
+        file_name="sales_summary.pdf",
+        mime="application/pdf"
+    )
 
 elif ROLE == "dealer":
-    pdf = build_pdf(
+    dealer_pdf = build_pdf(
         "Dealer Service Payment Summary",
         {
             "Client": client_name,
@@ -299,7 +309,12 @@ elif ROLE == "dealer":
         },
         signature=f"Authorized by {dealer_name}"
     )
-    st.download_button("Print / Download Dealer PDF", pdf, "dealer_summary.pdf")
+    st.download_button(
+        "Print / Download Dealer PDF",
+        dealer_pdf,
+        file_name="dealer_summary.pdf",
+        mime="application/pdf"
+    )
 
 elif ROLE == "admin":
     col1, col2 = st.columns(2)
@@ -314,33 +329,45 @@ elif ROLE == "admin":
         "Date": today
     }
 
+    admin_pdf_no_profit = build_pdf(
+        "Equity Participation Fee Summary",
+        header_data,
+        fees,
+        {
+            "Total Equity Pool": f"${equity_pool:,.2f}",
+            "Equity %": f"{equity_pct}%",
+            "Client Payout": f"${client_payout:,.2f}",
+        }
+    )
+
+    admin_pdf_with_profit = build_pdf(
+        "Equity Participation Fee Summary",
+        header_data,
+        fees,
+        {
+            "Total Equity Pool": f"${equity_pool:,.2f}",
+            "Equity %": f"{equity_pct}%",
+            "Client Payout": f"${client_payout:,.2f}",
+            "Broker One Retained": f"${broker_one_retained:,.2f}",
+        },
+        signature="Approved by Broker One Finance – CEO"
+    )
+
     with col1:
-        pdf_no_profit = build_pdf(
-            "Equity Participation Fee Summary",
-            header_data,
-            fees,
-            {
-                "Total Equity Pool": f"${equity_pool:,.2f}",
-                "Equity %": f"{equity_pct}%",
-                "Client Payout": f"${client_payout:,.2f}",
-            }
+        st.download_button(
+            "Print / Download Admin PDF (No Broker Profit)",
+            admin_pdf_no_profit,
+            file_name="admin_summary_no_profit.pdf",
+            mime="application/pdf"
         )
-        st.download_button("Print / Download Admin PDF (No Broker Profit)", pdf_no_profit, "admin_summary_no_profit.pdf")
 
     with col2:
-        pdf_with_profit = build_pdf(
-            "Equity Participation Fee Summary",
-            header_data,
-            fees,
-            {
-                "Total Equity Pool": f"${equity_pool:,.2f}",
-                "Equity %": f"{equity_pct}%",
-                "Client Payout": f"${client_payout:,.2f}",
-                "Broker One Retained": f"${broker_one_retained:,.2f}",
-            },
-            signature="Approved by Broker One Finance – CEO"
+        st.download_button(
+            "Print / Download Admin PDF (With Broker Profit)",
+            admin_pdf_with_profit,
+            file_name="admin_summary_with_profit.pdf",
+            mime="application/pdf"
         )
-        st.download_button("Print / Download Admin PDF (With Broker Profit)", pdf_with_profit, "admin_summary_with_profit.pdf")
 
 # =========================
 # BACK TO CALCULATOR BUTTON
