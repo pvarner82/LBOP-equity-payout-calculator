@@ -263,7 +263,8 @@ if ROLE == "client":
         "Print / Download Client PDF",
         client_pdf,
         file_name="client_estimate.pdf",
-        mime="application/pdf"
+        mime="application/pdf",
+        key="client_pdf_download"
     )
 
 elif ROLE == "sales":
@@ -288,7 +289,8 @@ elif ROLE == "sales":
         "Print / Download Sales PDF",
         sales_pdf,
         file_name="sales_summary.pdf",
-        mime="application/pdf"
+        mime="application/pdf",
+        key="sales_pdf_download"
     )
 
 elif ROLE == "dealer":
@@ -313,7 +315,8 @@ elif ROLE == "dealer":
         "Print / Download Dealer PDF",
         dealer_pdf,
         file_name="dealer_summary.pdf",
-        mime="application/pdf"
+        mime="application/pdf",
+        key="dealer_pdf_download"
     )
 
 elif ROLE == "admin":
@@ -358,7 +361,8 @@ elif ROLE == "admin":
             "Print / Download Admin PDF (No Broker Profit)",
             admin_pdf_no_profit,
             file_name="admin_summary_no_profit.pdf",
-            mime="application/pdf"
+            mime="application/pdf",
+            key="admin_pdf_no_profit_download"
         )
 
     with col2:
@@ -366,25 +370,12 @@ elif ROLE == "admin":
             "Print / Download Admin PDF (With Broker Profit)",
             admin_pdf_with_profit,
             file_name="admin_summary_with_profit.pdf",
-            mime="application/pdf"
+            mime="application/pdf",
+            key="admin_pdf_with_profit_download"
         )
 
 # =========================
 # BACK TO CALCULATOR LINK
 # =========================
 st.markdown("---")
-st.markdown(
-    """
-    <a href="./" target="_self" style="
-        display: inline-block;
-        padding: 0.5rem 1rem;
-        border-radius: 0.5rem;
-        background-color: #f0f2f6;
-        color: #262730;
-        text-decoration: none;
-        border: 1px solid #d3d3d3;
-        font-weight: 600;
-    ">Back to Calculator</a>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("[Back to Calculator](./)")
