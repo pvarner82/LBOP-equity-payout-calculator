@@ -6,7 +6,6 @@ from reportlab.lib import colors
 from datetime import date
 import io
 import math
-import base64
 
 # =========================
 # AUTH
@@ -238,25 +237,6 @@ def build_pdf(title, header, fees, results, footer="", signature=None):
     buf.seek(0)
     return buf.getvalue()
 
-def pdf_link(pdf_bytes, filename, label):
-    b64 = base64.b64encode(pdf_bytes).decode()
-    return f"""
-    <a href="data:application/pdf;base64,{b64}" download="{filename}" target="_blank" style="
-        display: inline-block;
-        padding: 0.75rem 1rem;
-        border-radius: 0.75rem;
-        background-color: #1f2937;
-        color: white;
-        text-decoration: none;
-        border: 1px solid #4b5563;
-        font-weight: 600;
-        width: 100%;
-        text-align: center;
-        box-sizing: border-box;
-        margin-bottom: 0.5rem;
-    ">{label}</a>
-    """
-
 # =========================
 # PDF DOWNLOAD / PRINT OPTIONS
 # =========================
@@ -279,9 +259,11 @@ if ROLE == "client":
         },
         footer="This document is an estimate only. Final figures may vary."
     )
-    st.markdown(
-        pdf_link(client_pdf, "client_estimate.pdf", "Print / Download Client PDF"),
-        unsafe_allow_html=True
+    st.download_button(
+        "Print / Download Client PDF",
+        client_pdf,
+        file_name="client_estimate.pdf",
+        mime="application/pdf"
     )
 
 elif ROLE == "sales":
@@ -302,9 +284,11 @@ elif ROLE == "sales":
             "Client Payout": f"${client_payout:,.2f}",
         }
     )
-    st.markdown(
-        pdf_link(sales_pdf, "sales_summary.pdf", "Print / Download Sales PDF"),
-        unsafe_allow_html=True
+    st.download_button(
+        "Print / Download Sales PDF",
+        sales_pdf,
+        file_name="sales_summary.pdf",
+        mime="application/pdf"
     )
 
 elif ROLE == "dealer":
@@ -325,9 +309,11 @@ elif ROLE == "dealer":
         },
         signature=f"Authorized by {dealer_name}"
     )
-    st.markdown(
-        pdf_link(dealer_pdf, "dealer_summary.pdf", "Print / Download Dealer PDF"),
-        unsafe_allow_html=True
+    st.download_button(
+        "Print / Download Dealer PDF",
+        dealer_pdf,
+        file_name="dealer_summary.pdf",
+        mime="application/pdf"
     )
 
 elif ROLE == "admin":
@@ -368,41 +354,17 @@ elif ROLE == "admin":
     )
 
     with col1:
-        st.markdown(
-            pdf_link(
-                admin_pdf_no_profit,
-                "admin_summary_no_profit.pdf",
-                "Print / Download Admin PDF (No Broker Profit)"
-            ),
-            unsafe_allow_html=True
+        st.download_button(
+            "Print / Download Admin PDF (No Broker Profit)",
+            admin_pdf_no_profit,
+            file_name="admin_summary_no_profit.pdf",
+            mime="application/pdf"
         )
 
     with col2:
-        st.markdown(
-            pdf_link(
-                admin_pdf_with_profit,
-                "admin_summary_with_profit.pdf",
-                "Print / Download Admin PDF (With Broker Profit)"
-            ),
-            unsafe_allow_html=True
+        st.download_button(
+            "Print / Download Admin PDF (With Broker Profit)",
+            admin_pdf_with_profit,
+            file_name="admin_summary_with_profit.pdf",
+            mime="application/pdf"
         )
-
-# =========================
-# BACK TO CALCULATOR LINK
-# =========================
-st.markdown("---")
-st.markdown(
-    """
-    <a href="./" target="_self" style="
-        display: inline-block;
-        padding: 0.5rem 1rem;
-        border-radius: 0.5rem;
-        background-color: #f0f2f6;
-        color: #262730;
-        text-decoration: none;
-        border: 1px solid #d3d3d3;
-        font-weight: 600;
-    ">Back to Calculator</a>
-    """,
-    unsafe_allow_html=True
-)
