@@ -374,4 +374,3 @@ elif ROLE == "admin":
             mime="application/pdf",
             key="admin_pdf_with_profit_download"
         )
-```
