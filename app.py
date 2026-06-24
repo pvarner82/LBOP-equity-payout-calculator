@@ -28,7 +28,7 @@ if not st.session_state.logged_in:
         if u in USERS and USERS[u]["password"] == p:
             st.session_state.logged_in = True
             st.session_state.role = USERS[u]["role"]
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Invalid credentials")
     st.stop()
@@ -64,6 +64,7 @@ def equity_percentage(buy_now):
             pos = (buy_now - low) / (high - low)
             pct = lp - pos * (lp - hp)
             return math.floor(pct * 10) / 10
+    return 42.5
 
 # =========================
 # UI INPUTS
@@ -119,8 +120,8 @@ additional_fees = {}
 count = st.number_input("Number of Additional Fees", 0, 10, 0)
 
 for i in range(count):
-    name = st.text_input(f"Fee Name {i+1}")
-    amt = st.number_input(f"Fee Amount {i+1}", min_value=0.0)
+    name = st.text_input(f"Fee Name {i+1}", key=f"fee_name_{i}")
+    amt = st.number_input(f"Fee Amount {i+1}", min_value=0.0, key=f"fee_amount_{i}")
     if name:
         additional_fees[name] = amt
 
@@ -260,10 +261,11 @@ if ROLE == "client":
         footer="This document is an estimate only. Final figures may vary."
     )
     st.download_button(
-        "Print / Download Client PDF",
-        client_pdf,
+        label="Print / Download Client PDF",
+        data=client_pdf,
         file_name="client_estimate.pdf",
-        mime="application/pdf"
+        mime="application/pdf",
+        key="client_pdf_download"
     )
 
 elif ROLE == "sales":
@@ -285,10 +287,11 @@ elif ROLE == "sales":
         }
     )
     st.download_button(
-        "Print / Download Sales PDF",
-        sales_pdf,
+        label="Print / Download Sales PDF",
+        data=sales_pdf,
         file_name="sales_summary.pdf",
-        mime="application/pdf"
+        mime="application/pdf",
+        key="sales_pdf_download"
     )
 
 elif ROLE == "dealer":
@@ -310,10 +313,11 @@ elif ROLE == "dealer":
         signature=f"Authorized by {dealer_name}"
     )
     st.download_button(
-        "Print / Download Dealer PDF",
-        dealer_pdf,
+        label="Print / Download Dealer PDF",
+        data=dealer_pdf,
         file_name="dealer_summary.pdf",
-        mime="application/pdf"
+        mime="application/pdf",
+        key="dealer_pdf_download"
     )
 
 elif ROLE == "admin":
@@ -355,16 +359,19 @@ elif ROLE == "admin":
 
     with col1:
         st.download_button(
-            "Print / Download Admin PDF (No Broker Profit)",
-            admin_pdf_no_profit,
+            label="Print / Download Admin PDF (No Broker Profit)",
+            data=admin_pdf_no_profit,
             file_name="admin_summary_no_profit.pdf",
-            mime="application/pdf"
+            mime="application/pdf",
+            key="admin_pdf_no_profit_download"
         )
 
     with col2:
         st.download_button(
-            "Print / Download Admin PDF (With Broker Profit)",
-            admin_pdf_with_profit,
+            label="Print / Download Admin PDF (With Broker Profit)",
+            data=admin_pdf_with_profit,
             file_name="admin_summary_with_profit.pdf",
-            mime="application/pdf"
+            mime="application/pdf",
+            key="admin_pdf_with_profit_download"
         )
+```
