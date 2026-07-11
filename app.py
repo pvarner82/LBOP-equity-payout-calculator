@@ -302,6 +302,8 @@ elif ROLE == "dealer":
             "Vehicle": vehicle,
             "Credit Union": lender,
             "Dealership": dealer_name,
+            "Retail Value": f"${retail_value:,.2f}",
+            "Buy Now Price": f"${buy_now:,.2f}",
             "Date": today
         },
         fees,
